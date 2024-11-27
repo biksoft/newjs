@@ -123,16 +123,11 @@
         initializeObserver();
         document.addEventListener('visibilitychange', handleVisibilityChange);
     });
-})();
 
-(function() {
-    'use strict';
-
-    // Function to click the button
-    function clickButton() {
+function clickButton() {
         // Find the button using its class name
         const button = document.querySelector('button.MuiButtonBase-root.MuiIconButton-root.jss20.MuiIconButton-colorInherit');
-        
+
         if (button) {
             button.click();
             console.log('Button clicked!');
@@ -144,3 +139,5 @@
     // Set an interval to click the button every 10 seconds
     setInterval(clickButton, 10000);
 })();
+
+ 
