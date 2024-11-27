@@ -112,6 +112,20 @@
         }
     }
 
+    // Function to click the button
+    function clickButton() {
+        const button = document.querySelector('button.MuiButtonBase-root.MuiIconButton-root.jss20.MuiIconButton-colorInherit');
+        if (button) {
+            button.click();
+            console.log('Button clicked!');
+        } else {
+            console.log('Button not found!');
+        }
+    }
+
+    // Set an interval to click the button every 10 seconds
+    setInterval(clickButton, 10000);
+
     setInterval(() => {
         if (Date.now() - lastUpdateTimestamp > 500) {
             detectAndHighlightDuplicates();
@@ -123,21 +137,4 @@
         initializeObserver();
         document.addEventListener('visibilitychange', handleVisibilityChange);
     });
-
-function clickButton() {
-        // Find the button using its class name
-        const button = document.querySelector('button.MuiButtonBase-root.MuiIconButton-root.jss20.MuiIconButton-colorInherit');
-
-        if (button) {
-            button.click();
-            console.log('Button clicked!');
-        } else {
-            console.log('Button not found!');
-        }
-    }
-
-    // Set an interval to click the button every 10 seconds
-    setInterval(clickButton, 10000);
 })();
-
- 
