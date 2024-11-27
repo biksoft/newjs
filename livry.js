@@ -124,6 +124,7 @@
         document.addEventListener('visibilitychange', handleVisibilityChange);
     });
 
+})();
 function waitForElement(selector, callback) {
     const element = document.querySelector(selector);
     if (element) {
@@ -243,4 +244,3 @@ function addRCOnlineButton(container) {
 // Wait for the container div to be available and then add the button
 waitForElement('div.jss21', addRCOnlineButton);
 
-})();
