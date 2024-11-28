@@ -80,7 +80,7 @@
     }
 
     function addEmoji(td, emoji, className) {
-        if (!td.querySelector(.${className})) {
+        if (!td.querySelector(`.${className}`)) {
             const emojiSpan = document.createElement('span');
             emojiSpan.textContent = emoji;
             emojiSpan.classList.add(className);
@@ -123,3 +123,4 @@
         initializeObserver();
         document.addEventListener('visibilitychange', handleVisibilityChange);
     });
+})();
