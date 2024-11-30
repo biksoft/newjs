@@ -8,7 +8,7 @@
         "khallad abir",
         "azami ayoub",
         "ettabii tarik",
-        "chaari hiba"
+        "Stati Yassine"
     ];
 
     // Normalize text content
