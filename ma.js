@@ -1,5 +1,4 @@
-
-
+// ma.js
 
 (function() {
     const targetNames = [
@@ -9,8 +8,7 @@
         "khallad abir",
         "azami ayoub",
         "ettabii tarik",
-        "ettabii zineb",
-        "CHAARI Hiba"
+        "chaari hiba"
     ];
 
     // Normalize text content
@@ -32,6 +30,6 @@
         });
     }
 
-    // Wait for DOM to be fully loaded
-    document.addEventListener("DOMContentLoaded", highlightRows);
+    // Execute the function immediately
+    highlightRows();
 })();
