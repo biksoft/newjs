@@ -10,7 +10,7 @@
         "azami ayoub",
         "ettabii tarik",
         "ettabii zineb",
-        "CHERRAB Kawtar"
+        "CHAARI Hiba"
     ];
 
     // Normalize text content
