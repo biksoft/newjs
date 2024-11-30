@@ -1,5 +1,6 @@
 
 
+
 (function() {
     const targetNames = [
         "khalis kamal",
