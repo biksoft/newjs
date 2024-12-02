@@ -22,7 +22,7 @@
             const typeCell = tr.querySelector('td.column-type span');
 
             return (
-                livreurStatusCell?.textContent.trim() === 'Déposée' &&
+                livreurStatusCell?.textContent.trim() === 'En recherche' &&
                 typeCell?.textContent.trim() === 'Planifiée'
             );
         });
