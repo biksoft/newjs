@@ -112,7 +112,6 @@
         }
     }
 
-    // New functions for updating the count
     function countMatchingRows() {
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
 
@@ -122,6 +121,7 @@
         }
 
         const rows = tbody.querySelectorAll('tr');
+
         const matchingRows = Array.from(rows).filter(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
@@ -179,7 +179,6 @@
 
         form.appendChild(fieldDiv);
 
-        // Set up the interval to refresh the count every 10 seconds
         setInterval(() => {
             countSpan.textContent = countMatchingRows();
         }, 10000);
@@ -188,6 +187,13 @@
     window.addEventListener('load', () => {
         initializeObserver();
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        addPlanifieFieldToForm(); // Call the function to add the field on page load
+        addPlanifieFieldToForm(); // Call this function to add the field to the form
     });
+
+    setInterval(() => {
+        if (Date.now() - lastUpdateTimestamp > 500) {
+            detectAndHighlightDuplicates();
+            highlightRows();
+        }
+    }, 500);
 })();
