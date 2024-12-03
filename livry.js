@@ -89,7 +89,7 @@ return (
         // Set up the interval to refresh the count every 10 seconds
         setInterval(() => {
             countSpan.textContent = countMatchingRows();
-        }, 1000);
+        }, 10000);
     }
 
     // Function to highlight rows based on specific conditions
@@ -169,7 +169,7 @@ return (
     }
 
     function addEmoji(td, emoji, className) {
-        if (!td.querySelector(.${className})) {
+        if (!td.querySelector(`.${className}`)) {
             const emojiSpan = document.createElement('span');
             emojiSpan.textContent = emoji;
             emojiSpan.classList.add(className);
@@ -200,7 +200,6 @@ return (
             highlightRows();
         }
     }
-
 
     // Initialize the observer and other necessary functions
     setInterval(() => {
