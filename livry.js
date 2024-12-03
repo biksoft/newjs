@@ -1,8 +1,12 @@
 (() => {
     'use strict';
 
+    let observer;
+    let lastUpdateTimestamp = Date.now();
+
     // Function to count rows matching the specified conditions
     function countMatchingRows() {
+        // Select all rows in the table body
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
 
         if (!tbody) {
@@ -12,16 +16,18 @@
 
         const rows = tbody.querySelectorAll('tr');
 
+        // Filter rows based on the conditions
         const matchingRows = Array.from(rows).filter(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
 
-            return (
-                (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-                 typeCell?.textContent.trim() === 'Planifiée') ||
-                (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-                 typeCell?.textContent.trim() === 'Planifiée')
-            );
+return (
+    (livreurStatusCell?.textContent.trim() === 'En recherche' &&
+     typeCell?.textContent.trim() === 'Planifiée') ||
+    (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
+     typeCell?.textContent.trim() === 'Planifiée')
+);
+
         });
 
         return matchingRows.length;
@@ -35,11 +41,12 @@
         form.style.borderRadius = '8px';
         form.style.backgroundColor = '#f9f9f9';
         form.style.fontFamily = 'Arial, sans-serif';
-        form.style.fontSize = '16px';
+        form.style.fontSize = '16px'; // Double the size of text
     }
 
     // Function to add the new field to the form
     function addPlanifieFieldToForm() {
+        // Get the form element
         const form = document.querySelector('form.jss55.jss56');
 
         if (!form) {
@@ -47,14 +54,17 @@
             return;
         }
 
+        // Apply modern styling to the form
         styleForm(form);
 
+        // Create a new div to contain the field
         const fieldDiv = document.createElement('div');
         fieldDiv.className = 'filter-field';
         fieldDiv.style.marginTop = '15px';
         fieldDiv.style.display = 'flex';
         fieldDiv.style.alignItems = 'center';
 
+        // Create a label for the field
         const label = document.createElement('label');
         label.textContent = 'Planifie:';
         label.style.marginRight = '12px';
@@ -62,17 +72,21 @@
         label.style.fontWeight = '600';
         label.style.color = '#333';
 
+        // Create a span to display the count
         const countSpan = document.createElement('span');
         countSpan.textContent = countMatchingRows();
         countSpan.style.fontWeight = 'bold';
         countSpan.style.fontSize = '1.5em';
         countSpan.style.color = '#007bff';
 
+        // Append the label and span to the div
         fieldDiv.appendChild(label);
         fieldDiv.appendChild(countSpan);
 
+        // Append the new field to the form
         form.appendChild(fieldDiv);
 
+        // Set up the interval to refresh the count every 10 seconds
         setInterval(() => {
             countSpan.textContent = countMatchingRows();
         }, 1000);
@@ -103,36 +117,102 @@
             } else if (clientStatus === 'Prête' || orderStatus === 'Acceptée') {
                 row.style.backgroundColor = '#ffeb42';
             } else if (clientStatus === 'Annulée' || orderStatus === 'Annulée') {
-                row.style.backgroundColor = '#ff6666';
+                row.style.backgroundColor = '#ff4242';
+            } else if (clientStatus === 'Expirée' || orderStatus === 'Expirée') {
+                row.style.backgroundColor = '#ff4242';
             }
         });
     }
 
-    // MutationObserver to monitor DOM changes
-    function observeDOMChanges() {
-        const targetNode = document.body;
+    function detectAndHighlightDuplicates() {
+        if (observer) observer.disconnect();
 
-        if (!targetNode) {
-            console.error('Body element not found.');
-            return;
-        }
+        const tdElements = document.querySelectorAll(
+            'td.column-order_id span, td.column-code span'
+        );
 
-        const observerConfig = { childList: true, subtree: true };
+        const values = Array.from(tdElements).map(span => ({
+            value: span.textContent.trim(),
+            td: span.closest('td')
+        }));
 
-        const observer = new MutationObserver(() => {
-            addPlanifieFieldToForm();
-            highlightRows();
+        const valueCounts = {};
+        values.forEach(({ value, td }) => {
+            if (!valueCounts[value]) {
+                valueCounts[value] = { tds: [] };
+            }
+            valueCounts[value].tds.push(td);
         });
 
-        observer.observe(targetNode, observerConfig);
+        Object.keys(valueCounts).forEach(value => {
+            const { tds } = valueCounts[value];
+            const count = tds.length;
+
+            if (count > 1) {
+                cleanEmoji(tds[0]);
+                addEmoji(tds[0], '🔴', 'duplicate-emoji-red');
+
+                tds.slice(1, -1).forEach(td => {
+                    cleanEmoji(td);
+                    addEmoji(td, '🔴', 'duplicate-emoji-red');
+                });
+
+                const lastDuplicate = tds[tds.length - 1];
+                cleanEmoji(lastDuplicate);
+                addEmoji(lastDuplicate, '✅', 'duplicate-emoji-green');
+            } else {
+                tds.forEach(td => cleanEmoji(td));
+            }
+        });
+
+        if (observer) observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    // Initialize the script
-    function init() {
-        addPlanifieFieldToForm();
+    function addEmoji(td, emoji, className) {
+        if (!td.querySelector(.${className})) {
+            const emojiSpan = document.createElement('span');
+            emojiSpan.textContent = emoji;
+            emojiSpan.classList.add(className);
+            td.appendChild(emojiSpan);
+        }
+    }
+
+    function cleanEmoji(td) {
+        const existingEmojis = td.querySelectorAll('.duplicate-emoji-red, .duplicate-emoji-green');
+        existingEmojis.forEach(emoji => emoji.remove());
+    }
+
+    function initializeObserver() {
+        observer = new MutationObserver(() => {
+            detectAndHighlightDuplicates();
+            highlightRows();
+            lastUpdateTimestamp = Date.now();
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+        detectAndHighlightDuplicates();
         highlightRows();
-        observeDOMChanges();
     }
 
-    init();
+    function handleVisibilityChange() {
+        if (document.visibilityState === 'visible') {
+            detectAndHighlightDuplicates();
+            highlightRows();
+        }
+    }
+
+
+    // Initialize the observer and other necessary functions
+    setInterval(() => {
+        if (Date.now() - lastUpdateTimestamp > 500) {
+            detectAndHighlightDuplicates();
+            highlightRows();
+        }
+    }, 500);
+
+    window.addEventListener('load', () => {
+        initializeObserver();
+        addPlanifieFieldToForm();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+    });
 })();
