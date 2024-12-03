@@ -89,7 +89,7 @@ return (
         // Set up the interval to refresh the count every 10 seconds
         setInterval(() => {
             countSpan.textContent = countMatchingRows();
-        }, 10000);
+        }, 1000);
     }
 
     // Function to highlight rows based on specific conditions
@@ -207,7 +207,6 @@ return (
         if (Date.now() - lastUpdateTimestamp > 500) {
             detectAndHighlightDuplicates();
             highlightRows();
-            addPlanifieFieldToForm();
         }
     }, 500);
 
