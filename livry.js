@@ -208,7 +208,6 @@ return (
             detectAndHighlightDuplicates();
             highlightRows();
             addPlanifieFieldToForm();
-            initializeObserver();
         }
     }, 500);
 
