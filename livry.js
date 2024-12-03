@@ -21,10 +21,13 @@
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
 
-            return (
-                livreurStatusCell?.textContent.trim() === 'En recherche' &&
-                typeCell?.textContent.trim() === 'Planifiée'
-            );
+return (
+    (livreurStatusCell?.textContent.trim() === 'En recherche' &&
+     typeCell?.textContent.trim() === 'Planifiée') ||
+    (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
+     typeCell?.textContent.trim() === 'Planifiée')
+);
+
         });
 
         return matchingRows.length;
