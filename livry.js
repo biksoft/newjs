@@ -201,11 +201,14 @@ return (
         }
     }
 
+
     // Initialize the observer and other necessary functions
     setInterval(() => {
         if (Date.now() - lastUpdateTimestamp > 500) {
             detectAndHighlightDuplicates();
             highlightRows();
+            addPlanifieFieldToForm();
+            initializeObserver();
         }
     }, 500);
 
