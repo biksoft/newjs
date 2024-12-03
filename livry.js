@@ -119,7 +119,7 @@
 
         const observerConfig = { childList: true, subtree: true };
 
-        observer = new MutationObserver(() => {
+        const observer = new MutationObserver(() => {
             addPlanifieFieldToForm();
             highlightRows();
         });
