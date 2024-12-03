@@ -1,6 +1,38 @@
 (() => {
     'use strict';
 
+    let observer;
+    let lastUpdateTimestamp = Date.now();
+
+    // Function to count rows matching the specified conditions
+    function countMatchingRows() {
+        // Select all rows in the table body
+        const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
+
+        if (!tbody) {
+            console.error('The table body was not found.');
+            return 0;
+        }
+
+        const rows = tbody.querySelectorAll('tr');
+
+        // Filter rows based on the conditions
+        const matchingRows = Array.from(rows).filter(tr => {
+            const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
+            const typeCell = tr.querySelector('td.column-type span');
+
+return (
+    (livreurStatusCell?.textContent.trim() === 'En recherche' &&
+     typeCell?.textContent.trim() === 'Planifiée') ||
+    (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
+     typeCell?.textContent.trim() === 'Planifiée')
+);
+
+        });
+
+        return matchingRows.length;
+    }
+
     // Function to style the form
     function styleForm(form) {
         form.style.border = '2px dashed #007bff';
@@ -19,11 +51,6 @@
 
         if (!form) {
             console.error('The form was not found.');
-            return;
-        }
-
-        // Check if the field is already added
-        if (form.querySelector('.filter-field')) {
             return;
         }
 
@@ -65,52 +92,126 @@
         }, 10000);
     }
 
-    // Function to count rows matching the specified conditions
-    function countMatchingRows() {
-        // Select all rows in the table body
-        const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
+    // Function to highlight rows based on specific conditions
+    function highlightRows() {
+        const rows = document.querySelectorAll(
+            'tr[resource="orders"], tr[resource="partnerOrders"]'
+        );
 
-        if (!tbody) {
-            console.error('The table body was not found.');
-            return 0;
-        }
+        rows.forEach(row => {
+            const clientStatus = row.querySelector('td.column-client_status span')?.textContent.trim();
+            const orderStatus = row.querySelector('td.column-status span')?.textContent.trim();
 
-        const rows = tbody.querySelectorAll('tr');
+            if (clientStatus === 'Déposée' || orderStatus === 'Déposée') {
+                row.style.backgroundColor = '#42ff79';
+            } else if (clientStatus === 'En attente de paiement' || orderStatus === 'En recherche') {
+                row.style.backgroundColor = '#ffeb42';
+            } else if (clientStatus === 'En préparation' || orderStatus === 'En recherche') {
+                row.style.backgroundColor = '#ffeb42';
+            } else if (clientStatus === 'Acceptée' || orderStatus === 'En recherche') {
+                row.style.backgroundColor = '#67eef4';
+            } else if (clientStatus === 'Acceptée' || orderStatus === 'Acceptée') {
+                row.style.backgroundColor = '#ffeb42';
+            } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée') {
+                row.style.backgroundColor = '#ffeb42';
+            } else if (clientStatus === 'Prête' || orderStatus === 'Acceptée') {
+                row.style.backgroundColor = '#ffeb42';
+            } else if (clientStatus === 'Annulée' || orderStatus === 'Annulée') {
+                row.style.backgroundColor = '#ff4242';
+            } else if (clientStatus === 'Expirée' || orderStatus === 'Expirée') {
+                row.style.backgroundColor = '#ff4242';
+            }
+        });
+    }
 
-        // Filter rows based on the conditions
-        const matchingRows = Array.from(rows).filter(tr => {
-            const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
-            const typeCell = tr.querySelector('td.column-type span');
+    function detectAndHighlightDuplicates() {
+        if (observer) observer.disconnect();
 
-            return (
-                (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-                 typeCell?.textContent.trim() === 'Planifiée') ||
-                (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-                 typeCell?.textContent.trim() === 'Planifiée')
-            );
+        const tdElements = document.querySelectorAll(
+            'td.column-order_id span, td.column-code span'
+        );
+
+        const values = Array.from(tdElements).map(span => ({
+            value: span.textContent.trim(),
+            td: span.closest('td')
+        }));
+
+        const valueCounts = {};
+        values.forEach(({ value, td }) => {
+            if (!valueCounts[value]) {
+                valueCounts[value] = { tds: [] };
+            }
+            valueCounts[value].tds.push(td);
         });
 
-        return matchingRows.length;
+        Object.keys(valueCounts).forEach(value => {
+            const { tds } = valueCounts[value];
+            const count = tds.length;
+
+            if (count > 1) {
+                cleanEmoji(tds[0]);
+                addEmoji(tds[0], '🔴', 'duplicate-emoji-red');
+
+                tds.slice(1, -1).forEach(td => {
+                    cleanEmoji(td);
+                    addEmoji(td, '🔴', 'duplicate-emoji-red');
+                });
+
+                const lastDuplicate = tds[tds.length - 1];
+                cleanEmoji(lastDuplicate);
+                addEmoji(lastDuplicate, '✅', 'duplicate-emoji-green');
+            } else {
+                tds.forEach(td => cleanEmoji(td));
+            }
+        });
+
+        if (observer) observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    // Function to execute the logic directly if flagged
-    function executeDirectly() {
-        const executeFlag = localStorage.getItem('executePlanifieField');
-        if (executeFlag === 'true') {
-            addPlanifieFieldToForm();
+    function addEmoji(td, emoji, className) {
+        if (!td.querySelector(`.${className}`)) {
+            const emojiSpan = document.createElement('span');
+            emojiSpan.textContent = emoji;
+            emojiSpan.classList.add(className);
+            td.appendChild(emojiSpan);
         }
     }
 
-    // Add event listener to set the flag in localStorage
+    function cleanEmoji(td) {
+        const existingEmojis = td.querySelectorAll('.duplicate-emoji-red, .duplicate-emoji-green');
+        existingEmojis.forEach(emoji => emoji.remove());
+    }
+
+    function initializeObserver() {
+        observer = new MutationObserver(() => {
+            detectAndHighlightDuplicates();
+            highlightRows();
+            lastUpdateTimestamp = Date.now();
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+        detectAndHighlightDuplicates();
+        highlightRows();
+    }
+
+    function handleVisibilityChange() {
+        if (document.visibilityState === 'visible') {
+            detectAndHighlightDuplicates();
+            highlightRows();
+        }
+    }
+
+    // Initialize the observer and other necessary functions
+    setInterval(() => {
+        if (Date.now() - lastUpdateTimestamp > 500) {
+            detectAndHighlightDuplicates();
+            highlightRows();
+        }
+    }, 500);
+
     window.addEventListener('load', () => {
-        localStorage.setItem('executePlanifieField', 'true');
-        executeDirectly();
+        initializeObserver();
+        addPlanifieFieldToForm();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
     });
-
-    // Observe DOM changes and reapply the logic if needed
-    const observer = new MutationObserver(() => {
-        executeDirectly();
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
 })();
