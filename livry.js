@@ -4,30 +4,34 @@
     let observer;
     let lastUpdateTimestamp = Date.now();
 
+    // Cached table body reference
+    let cachedTbody;
+
     // Function to count rows matching the specified conditions
     function countMatchingRows() {
         // Select all rows in the table body
-        const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
+        if (!cachedTbody) {
+            cachedTbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
+        }
 
-        if (!tbody) {
+        if (!cachedTbody) {
             console.error('The table body was not found.');
             return 0;
         }
 
-        const rows = tbody.querySelectorAll('tr');
+        const rows = cachedTbody.querySelectorAll('tr');
 
         // Filter rows based on the conditions
         const matchingRows = Array.from(rows).filter(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
 
-return (
-    (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-     typeCell?.textContent.trim() === 'Planifiée') ||
-    (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-     typeCell?.textContent.trim() === 'Planifiée')
-);
-
+            return (
+                (livreurStatusCell?.textContent.trim() === 'En recherche' &&
+                 typeCell?.textContent.trim() === 'Planifiée') ||
+                (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
+                 typeCell?.textContent.trim() === 'Planifiée')
+            );
         });
 
         return matchingRows.length;
@@ -41,7 +45,7 @@ return (
         form.style.borderRadius = '8px';
         form.style.backgroundColor = '#f9f9f9';
         form.style.fontFamily = 'Arial, sans-serif';
-        form.style.fontSize = '16px'; // Double the size of text
+        form.style.fontSize = '16px';
     }
 
     // Function to add the new field to the form
@@ -50,7 +54,8 @@ return (
         const form = document.querySelector('form.jss55.jss56');
 
         if (!form) {
-            console.error('The form was not found.');
+            console.warn('Form not found. Retrying...');
+            setTimeout(addPlanifieFieldToForm, 500); // Retry after 500ms
             return;
         }
 
@@ -66,7 +71,7 @@ return (
 
         // Create a label for the field
         const label = document.createElement('label');
-        label.textContent = 'Planifie:';
+        label.textContent = 'PLANIFIE:';
         label.style.marginRight = '12px';
         label.style.fontSize = '1.5em';
         label.style.fontWeight = '600';
@@ -124,64 +129,6 @@ return (
         });
     }
 
-    function detectAndHighlightDuplicates() {
-        if (observer) observer.disconnect();
-
-        const tdElements = document.querySelectorAll(
-            'td.column-order_id span, td.column-code span'
-        );
-
-        const values = Array.from(tdElements).map(span => ({
-            value: span.textContent.trim(),
-            td: span.closest('td')
-        }));
-
-        const valueCounts = {};
-        values.forEach(({ value, td }) => {
-            if (!valueCounts[value]) {
-                valueCounts[value] = { tds: [] };
-            }
-            valueCounts[value].tds.push(td);
-        });
-
-        Object.keys(valueCounts).forEach(value => {
-            const { tds } = valueCounts[value];
-            const count = tds.length;
-
-            if (count > 1) {
-                cleanEmoji(tds[0]);
-                addEmoji(tds[0], '🔴', 'duplicate-emoji-red');
-
-                tds.slice(1, -1).forEach(td => {
-                    cleanEmoji(td);
-                    addEmoji(td, '🔴', 'duplicate-emoji-red');
-                });
-
-                const lastDuplicate = tds[tds.length - 1];
-                cleanEmoji(lastDuplicate);
-                addEmoji(lastDuplicate, '✅', 'duplicate-emoji-green');
-            } else {
-                tds.forEach(td => cleanEmoji(td));
-            }
-        });
-
-        if (observer) observer.observe(document.body, { childList: true, subtree: true });
-    }
-
-    function addEmoji(td, emoji, className) {
-        if (!td.querySelector(`.${className}`)) {
-            const emojiSpan = document.createElement('span');
-            emojiSpan.textContent = emoji;
-            emojiSpan.classList.add(className);
-            td.appendChild(emojiSpan);
-        }
-    }
-
-    function cleanEmoji(td) {
-        const existingEmojis = td.querySelectorAll('.duplicate-emoji-red, .duplicate-emoji-green');
-        existingEmojis.forEach(emoji => emoji.remove());
-    }
-
     function initializeObserver() {
         observer = new MutationObserver(() => {
             detectAndHighlightDuplicates();
@@ -192,13 +139,6 @@ return (
         observer.observe(document.body, { childList: true, subtree: true });
         detectAndHighlightDuplicates();
         highlightRows();
-    }
-
-    function handleVisibilityChange() {
-        if (document.visibilityState === 'visible') {
-            detectAndHighlightDuplicates();
-            highlightRows();
-        }
     }
 
     // Initialize the observer and other necessary functions
@@ -212,6 +152,5 @@ return (
     window.addEventListener('load', () => {
         initializeObserver();
         addPlanifieFieldToForm();
-        document.addEventListener('visibilitychange', handleVisibilityChange);
     });
 })();
