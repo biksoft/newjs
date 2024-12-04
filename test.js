@@ -1,130 +1,40 @@
-(() => {
-    'use strict';
-
-    // URLs to monitor
+(function monitorUrl() {
     const targetUrls = [
         "https://livry.flexi-apps.com/#/partnerOrders",
         "https://livry.flexi-apps.com/#/orders"
     ];
 
-    // Function to check the current URL and trigger the button click if needed
-    function checkAndClickButton() {
+    // Flag to ensure the button is clicked only once
+    let clicked = false;
+
+    function checkUrl() {
         const currentUrl = window.location.href;
         if (targetUrls.includes(currentUrl)) {
-            console.log("Detected target URL:", currentUrl);
-            const hiddenButton = document.getElementById('autoClickButton');
-            if (hiddenButton) {
-                hiddenButton.click();
+            console.log("Current URL matches one of the target URLs:", currentUrl);
+            if (!clicked) {
+                const button = document.querySelector('button'); // Modify the selector if needed to target a specific button
+                if (button) {
+                    console.log("Button found, clicking it...");
+                    button.click();
+                    clicked = true; // Set flag to true to prevent further clicks
+                } else {
+                    console.log("Button not found.");
+                }
             }
+        } else {
+            console.log("Current URL does not match the target URLs:", currentUrl);
         }
     }
 
-    // Create and style the hidden button
-    function createHiddenButton() {
-        const button = document.createElement('button');
-        button.id = 'autoClickButton';
-        button.style.display = 'none'; // Hidden by default
-        button.textContent = 'Auto Click Button'; // Set button text
+    // Check the URL immediately
+    checkUrl();
 
-        // Add an event listener to the button to execute the necessary code
-        button.addEventListener('click', () => {
-            console.log("Button clicked!");
-            // Add any code you want to execute when the button is clicked
-            addPlanifieFieldToForm();
-        });
-
-        // Append the button to the body
-        document.body.appendChild(button);
-    }
-
-    // Function to count rows matching the specified conditions
-    function countMatchingRows() {
-        const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
-
-        if (!tbody) {
-            console.error('The table body was not found.');
-            return 0;
+    // Monitor for changes in the URL
+    let lastUrl = window.location.href;
+    setInterval(() => {
+        if (lastUrl !== window.location.href) {
+            lastUrl = window.location.href;
+            checkUrl();
         }
-
-        const rows = tbody.querySelectorAll('tr');
-
-        // Filter rows based on the conditions
-        const matchingRows = Array.from(rows).filter(tr => {
-            const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
-            const typeCell = tr.querySelector('td.column-type span');
-
-            return (
-                (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-                    typeCell?.textContent.trim() === 'Planifiée') ||
-                (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-                    typeCell?.textContent.trim() === 'Planifiée')
-            );
-        });
-
-        return matchingRows.length;
-    }
-
-    // Function to style the form
-    function styleForm(form) {
-        form.style.border = '2px dashed #007bff';
-        form.style.padding = '20px';
-        form.style.margin = '10px';
-        form.style.borderRadius = '8px';
-        form.style.backgroundColor = '#f9f9f9';
-        form.style.fontFamily = 'Arial, sans-serif';
-        form.style.fontSize = '16px'; // Double the size of text
-    }
-
-    // Function to add the new field to the form
-    function addPlanifieFieldToForm() {
-        const form = document.querySelector('form.jss55.jss56');
-
-        if (!form) {
-            console.error('The form was not found.');
-            return;
-        }
-
-        // Apply modern styling to the form
-        styleForm(form);
-
-        // Create a new div to contain the field
-        const fieldDiv = document.createElement('div');
-        fieldDiv.className = 'filter-field';
-        fieldDiv.style.marginTop = '15px';
-        fieldDiv.style.display = 'flex';
-        fieldDiv.style.alignItems = 'center';
-
-        // Create a label for the field
-        const label = document.createElement('label');
-        label.textContent = 'Planifie:';
-        label.style.marginRight = '12px';
-        label.style.fontSize = '1.5em';
-        label.style.fontWeight = '600';
-        label.style.color = '#333';
-
-        // Create a span to display the count
-        const countSpan = document.createElement('span');
-        countSpan.textContent = countMatchingRows();
-        countSpan.style.fontWeight = 'bold';
-        countSpan.style.fontSize = '1.5em';
-        countSpan.style.color = '#007bff';
-
-        // Append the label and span to the div
-        fieldDiv.appendChild(label);
-        fieldDiv.appendChild(countSpan);
-
-        // Append the new field to the form
-        form.appendChild(fieldDiv);
-
-        // Set up the interval to refresh the count every 10 seconds
-        setInterval(() => {
-            countSpan.textContent = countMatchingRows();
-        }, 10000);
-    }
-
-    // Initialize the button and monitor URL changes
-    createHiddenButton();
-    checkAndClickButton();
-    setInterval(checkAndClickButton, 500); // Check every 500ms
-
+    }, 500); // Check every 500ms
 })();
