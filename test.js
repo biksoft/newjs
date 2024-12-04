@@ -4,101 +4,77 @@
     let observer;
     let lastUpdateTimestamp = Date.now();
 
-    // Function to check the current URL and trigger your code if it matches
-    function checkURLAndTriggerActions() {
-        const currentURL = window.location.href;
+    const targetUrls = [
+        'https://livry.flexi-apps.com/#/partnerOrders',
+        'https://livry.flexi-apps.com/#/orders'
+    ];
 
-        // Check if the current URL matches the specific links
-        if (
-            currentURL.includes('https://livry.flexi-apps.com/#/partnerOrders') ||
-            currentURL.includes('https://livry.flexi-apps.com/#/orders')
-        ) {
-            console.log('Matching URL detected:', currentURL);
-            
-            // Call your functions here
-            detectAndHighlightDuplicates();
-            highlightRows();
-            addPlanifieFieldToForm();
-        }
-    }
+    function countMatchingRows() {
+        const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
+        if (!tbody) return 0;
 
-    // Function to initialize MutationObserver for detecting URL changes
-    function monitorURLChanges() {
-        const observer = new MutationObserver(() => {
-            checkURLAndTriggerActions();
+        const rows = tbody.querySelectorAll('tr');
+        const matchingRows = Array.from(rows).filter(tr => {
+            const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
+            const typeCell = tr.querySelector('td.column-type span');
+            return (
+                (livreurStatusCell?.textContent.trim() === 'En recherche' &&
+                    typeCell?.textContent.trim() === 'Planifiée') ||
+                (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
+                    typeCell?.textContent.trim() === 'Planifiée')
+            );
         });
 
-        // Observe changes to the <body> element (React often re-renders this)
-        observer.observe(document.body, { childList: true, subtree: true });
+        return matchingRows.length;
     }
 
-    // Function to detect and highlight duplicates
-    function detectAndHighlightDuplicates() {
-        if (observer) observer.disconnect();
-
-        const tdElements = document.querySelectorAll(
-            'td.column-order_id span, td.column-code span'
-        );
-
-        const values = Array.from(tdElements).map(span => ({
-            value: span.textContent.trim(),
-            td: span.closest('td')
-        }));
-
-        const valueCounts = {};
-        values.forEach(({ value, td }) => {
-            if (!valueCounts[value]) {
-                valueCounts[value] = { tds: [] };
-            }
-            valueCounts[value].tds.push(td);
-        });
-
-        Object.keys(valueCounts).forEach(value => {
-            const { tds } = valueCounts[value];
-            const count = tds.length;
-
-            if (count > 1) {
-                cleanEmoji(tds[0]);
-                addEmoji(tds[0], '🔴', 'duplicate-emoji-red');
-
-                tds.slice(1, -1).forEach(td => {
-                    cleanEmoji(td);
-                    addEmoji(td, '🔴', 'duplicate-emoji-red');
-                });
-
-                const lastDuplicate = tds[tds.length - 1];
-                cleanEmoji(lastDuplicate);
-                addEmoji(lastDuplicate, '✅', 'duplicate-emoji-green');
-            } else {
-                tds.forEach(td => cleanEmoji(td));
-            }
-        });
-
-        if (observer) observer.observe(document.body, { childList: true, subtree: true });
+    function styleForm(form) {
+        form.style.border = '2px dashed #007bff';
+        form.style.padding = '20px';
+        form.style.margin = '10px';
+        form.style.borderRadius = '8px';
+        form.style.backgroundColor = '#f9f9f9';
+        form.style.fontFamily = 'Arial, sans-serif';
+        form.style.fontSize = '16px';
     }
 
-    // Function to add emoji
-    function addEmoji(td, emoji, className) {
-        if (!td.querySelector(`.${className}`)) {
-            const emojiSpan = document.createElement('span');
-            emojiSpan.textContent = emoji;
-            emojiSpan.classList.add(className);
-            td.appendChild(emojiSpan);
-        }
+    function addPlanifieFieldToForm() {
+        const form = document.querySelector('form.jss55.jss56');
+        if (!form) return;
+
+        styleForm(form);
+
+        const fieldDiv = document.createElement('div');
+        fieldDiv.className = 'filter-field';
+        fieldDiv.style.marginTop = '15px';
+        fieldDiv.style.display = 'flex';
+        fieldDiv.style.alignItems = 'center';
+
+        const label = document.createElement('label');
+        label.textContent = 'Planifie:';
+        label.style.marginRight = '12px';
+        label.style.fontSize = '1.5em';
+        label.style.fontWeight = '600';
+        label.style.color = '#333';
+
+        const countSpan = document.createElement('span');
+        countSpan.textContent = countMatchingRows();
+        countSpan.style.fontWeight = 'bold';
+        countSpan.style.fontSize = '1.5em';
+        countSpan.style.color = '#007bff';
+
+        fieldDiv.appendChild(label);
+        fieldDiv.appendChild(countSpan);
+
+        form.appendChild(fieldDiv);
+
+        setInterval(() => {
+            countSpan.textContent = countMatchingRows();
+        }, 10000);
     }
 
-    // Function to clean emojis
-    function cleanEmoji(td) {
-        const existingEmojis = td.querySelectorAll('.duplicate-emoji-red, .duplicate-emoji-green');
-        existingEmojis.forEach(emoji => emoji.remove());
-    }
-
-    // Function to highlight rows
     function highlightRows() {
-        const rows = document.querySelectorAll(
-            'tr[resource="orders"], tr[resource="partnerOrders"]'
-        );
-
+        const rows = document.querySelectorAll('tr[resource="orders"], tr[resource="partnerOrders"]');
         rows.forEach(row => {
             const clientStatus = row.querySelector('td.column-client_status span')?.textContent.trim();
             const orderStatus = row.querySelector('td.column-status span')?.textContent.trim();
@@ -125,14 +101,31 @@
         });
     }
 
-    // Function to add Planifie field
-    function addPlanifieFieldToForm() {
-        // Add your existing form-related logic here
+    function detectUrlChange() {
+        const currentUrl = window.location.href;
+        if (targetUrls.includes(currentUrl)) {
+            console.log('Detected target URL:', currentUrl);
+            addPlanifieFieldToForm();
+            highlightRows();
+        }
     }
 
-    // Run the URL monitoring and other setups on page load
+    function observeUrlChanges() {
+        let lastUrl = window.location.href;
+
+        setInterval(() => {
+            const currentUrl = window.location.href;
+            if (currentUrl !== lastUrl) {
+                lastUrl = currentUrl;
+                detectUrlChange();
+            }
+        }, 500);
+    }
+
     window.addEventListener('load', () => {
-        monitorURLChanges();
-        checkURLAndTriggerActions(); // Initial check
+        detectUrlChange();
+        observeUrlChanges();
+        addPlanifieFieldToForm();
+        highlightRows();
     });
 })();
