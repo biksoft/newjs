@@ -1,7 +1,6 @@
-let lastUpdateTimestamp = Date.now();
-
-// Function to count rows matching the specified conditions
+// Function to count matching rows
 function countMatchingRows() {
+    // Select all rows in the table body
     const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
 
     if (!tbody) {
@@ -11,15 +10,14 @@ function countMatchingRows() {
 
     const rows = tbody.querySelectorAll('tr');
 
+    // Filter rows based on the conditions
     const matchingRows = Array.from(rows).filter(tr => {
         const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
         const typeCell = tr.querySelector('td.column-type span');
 
         return (
-            (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-             typeCell?.textContent.trim() === 'Planifiée') ||
-            (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-             typeCell?.textContent.trim() === 'Planifiée')
+            livreurStatusCell?.textContent.trim() === 'Déposée' &&
+            typeCell?.textContent.trim() === 'Planifiée'
         );
     });
 
@@ -39,6 +37,7 @@ function styleForm(form) {
 
 // Function to add the new field to the form
 function addPlanifieFieldToForm() {
+    // Get the form element
     const form = document.querySelector('form.jss55.jss56');
 
     if (!form) {
@@ -46,14 +45,17 @@ function addPlanifieFieldToForm() {
         return;
     }
 
+    // Apply modern styling to the form
     styleForm(form);
 
+    // Create a new div to contain the field
     const fieldDiv = document.createElement('div');
     fieldDiv.className = 'filter-field';
     fieldDiv.style.marginTop = '15px';
     fieldDiv.style.display = 'flex';
     fieldDiv.style.alignItems = 'center';
 
+    // Create a label for the field
     const label = document.createElement('label');
     label.textContent = 'Planifie:';
     label.style.marginRight = '12px';
@@ -61,18 +63,25 @@ function addPlanifieFieldToForm() {
     label.style.fontWeight = '600';
     label.style.color = '#333';
 
+    // Create a span to display the count
     const countSpan = document.createElement('span');
     countSpan.textContent = countMatchingRows();
     countSpan.style.fontWeight = 'bold';
     countSpan.style.fontSize = '1.5em';
     countSpan.style.color = '#007bff';
 
+    // Append the label and span to the div
     fieldDiv.appendChild(label);
     fieldDiv.appendChild(countSpan);
 
+    // Append the new field to the form
     form.appendChild(fieldDiv);
 
+    // Set up the interval to refresh the count every 10 seconds
     setInterval(() => {
         countSpan.textContent = countMatchingRows();
     }, 10000);
 }
+
+// Execute the function to add the field to the form
+addPlanifieFieldToForm();
