@@ -2,7 +2,6 @@
     'use strict';
 
     let observer;
-    let lastUpdateTimestamp = Date.now();
 
     function countMatchingRows() {
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
@@ -64,45 +63,46 @@
 
         setInterval(() => {
             countSpan.textContent = countMatchingRows();
-        }, 10000);
+        }, 5000);
     }
 
-    function initializeObserver() {
+    function monitorDOMChanges() {
         if (observer) observer.disconnect();
 
         observer = new MutationObserver(() => {
-            addPlanifieFieldToForm();
+            const currentUrl = window.location.href;
+            if (
+                currentUrl.includes('/#/partnerOrders') ||
+                currentUrl.includes('/#/orders')
+            ) {
+                addPlanifieFieldToForm();
+            }
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    function applyScriptToPage() {
-        const currentUrl = window.location.href;
+    function checkURLChange() {
+        let lastURL = window.location.href;
 
-        if (
-            currentUrl.includes('/#/partnerOrders') ||
-            currentUrl.includes('/#/orders')
-        ) {
-            addPlanifieFieldToForm();
-            initializeObserver();
-        } else if (observer) {
-            observer.disconnect(); // Stop observing when on unrelated pages.
-        }
+        setInterval(() => {
+            const currentURL = window.location.href;
+            if (currentURL !== lastURL) {
+                lastURL = currentURL;
+
+                if (
+                    currentURL.includes('/#/partnerOrders') ||
+                    currentURL.includes('/#/orders')
+                ) {
+                    addPlanifieFieldToForm();
+                    monitorDOMChanges();
+                }
+            }
+        }, 1000);
     }
 
-    function handleHashChange() {
-        applyScriptToPage();
-    }
-
-    // Set up listeners for hash changes and initialize the script.
-    window.addEventListener('hashchange', handleHashChange);
-
-    // Run the script on initial load and set an interval to check the URL.
-    setInterval(() => {
-        applyScriptToPage();
-    }, 1000);
-
-    // Initial execution.
-    applyScriptToPage();
+    // Initialize the script
+    checkURLChange();
+    addPlanifieFieldToForm();
+    monitorDOMChanges();
 })();
