@@ -41,17 +41,12 @@
 
     // Function to add the new field to the form
     function addPlanifieFieldToForm() {
-        // Find the element with the text "biksoft"
-        const biksoftElement = Array.from(document.querySelectorAll('*')).find(el => el.textContent.includes('biksoft'));
+        const form = document.querySelector('form.jss55.jss56');
 
-        if (!biksoftElement) {
-            console.error('The "biksoft" element was not found.');
+        if (!form) {
+            console.error('The form was not found.');
             return;
         }
-
-        // Create the form if it doesn't already exist
-        const form = document.createElement('form');
-        form.className = 'jss55 jss56';
 
         // Apply modern styling to the form
         styleForm(form);
@@ -82,11 +77,16 @@
         fieldDiv.appendChild(label);
         fieldDiv.appendChild(countSpan);
 
-        // Append the new field to the form
-        form.appendChild(fieldDiv);
+        // Find the jss59 and jss57 elements
+        const jss59Element = form.querySelector('.jss59');
+        const jss57Element = form.querySelector('.jss57');
 
-        // Append the form after the "biksoft" element
-        biksoftElement.parentNode.insertBefore(form, biksoftElement.nextSibling);
+        if (jss59Element) {
+            // Append the new field after the jss59 element
+            jss59Element.parentNode.insertBefore(fieldDiv, jss57Element);
+        } else {
+            console.error('The jss59 element was not found.');
+        }
 
         // Set up the interval to refresh the count every 10 seconds
         setInterval(() => {
