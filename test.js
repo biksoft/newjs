@@ -1,48 +1,6 @@
 (() => {
     'use strict';
 
-    // URLs to monitor
-    const targetUrls = [
-        "https://livry.flexi-apps.com/#/partnerOrders",
-        "https://livry.flexi-apps.com/#/orders"
-    ];
-
-    // Flag to track if the button has been clicked
-    let buttonClicked = false;
-
-    // Function to check the current URL and trigger the button click if needed
-    function checkAndClickButton() {
-        const currentUrl = window.location.href;
-        if (targetUrls.includes(currentUrl)) {
-            console.log("Detected target URL:", currentUrl);
-            if (!buttonClicked) {
-                const hiddenButton = document.getElementById('autoClickButton');
-                if (hiddenButton) {
-                    hiddenButton.click();
-                    buttonClicked = true; // Set flag to true to ensure the button is not clicked again
-                }
-            }
-        }
-    }
-
-    // Create and style the hidden button
-    function createHiddenButton() {
-        const button = document.createElement('button');
-        button.id = 'autoClickButton';
-        button.style.display = 'none'; // Hidden by default
-        button.textContent = 'Auto Click Button'; // Set button text
-
-        // Add an event listener to the button to execute the necessary code
-        button.addEventListener('click', () => {
-            console.log("Button clicked!");
-            // Add any code you want to execute when the button is clicked
-            addPlanifieFieldToForm();
-        });
-
-        // Append the button to the body
-        document.body.appendChild(button);
-    }
-
     // Function to count rows matching the specified conditions
     function countMatchingRows() {
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
@@ -83,12 +41,17 @@
 
     // Function to add the new field to the form
     function addPlanifieFieldToForm() {
-        const form = document.querySelector('form.jss55.jss56');
+        // Find the element with the text "biksoft"
+        const biksoftElement = Array.from(document.querySelectorAll('*')).find(el => el.textContent.includes('biksoft'));
 
-        if (!form) {
-            console.error('The form was not found.');
+        if (!biksoftElement) {
+            console.error('The "biksoft" element was not found.');
             return;
         }
+
+        // Create the form if it doesn't already exist
+        const form = document.createElement('form');
+        form.className = 'jss55 jss56';
 
         // Apply modern styling to the form
         styleForm(form);
@@ -122,15 +85,15 @@
         // Append the new field to the form
         form.appendChild(fieldDiv);
 
+        // Append the form after the "biksoft" element
+        biksoftElement.parentNode.insertBefore(form, biksoftElement.nextSibling);
+
         // Set up the interval to refresh the count every 10 seconds
         setInterval(() => {
             countSpan.textContent = countMatchingRows();
         }, 10000);
     }
 
-    // Initialize the button and monitor URL changes
-    createHiddenButton();
-    checkAndClickButton();
-    setInterval(checkAndClickButton, 500); // Check every 500ms
-
+    // Run the function on page load
+    window.addEventListener('load', addPlanifieFieldToForm);
 })();
