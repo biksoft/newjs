@@ -1,8 +1,7 @@
 (() => {
     'use strict';
 
-    let observer;
-
+    // Function to count matching rows in the table
     function countMatchingRows() {
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
         if (!tbody) return 0;
@@ -22,7 +21,12 @@
         return matchingRows.length;
     }
 
-    function styleForm(form) {
+    // Function to create the form if it doesn't already exist
+    function addPlanifieFieldToForm() {
+        const form = document.querySelector('form.jss55.jss56');
+        if (!form || form.querySelector('.filter-field')) return;
+
+        // Style the form
         form.style.border = '2px dashed #007bff';
         form.style.padding = '20px';
         form.style.margin = '10px';
@@ -30,14 +34,8 @@
         form.style.backgroundColor = '#f9f9f9';
         form.style.fontFamily = 'Arial, sans-serif';
         form.style.fontSize = '16px';
-    }
 
-    function addPlanifieFieldToForm() {
-        const form = document.querySelector('form.jss55.jss56');
-        if (!form || form.querySelector('.filter-field')) return;
-
-        styleForm(form);
-
+        // Create the field
         const fieldDiv = document.createElement('div');
         fieldDiv.className = 'filter-field';
         fieldDiv.style.marginTop = '15px';
@@ -61,48 +59,36 @@
         fieldDiv.appendChild(countSpan);
         form.appendChild(fieldDiv);
 
+        // Update count every 5 seconds
         setInterval(() => {
             countSpan.textContent = countMatchingRows();
         }, 5000);
     }
 
-    function monitorDOMChanges() {
-        if (observer) observer.disconnect();
-
-        observer = new MutationObserver(() => {
-            const currentUrl = window.location.href;
-            if (
-                currentUrl.includes('/#/partnerOrders') ||
-                currentUrl.includes('/#/orders')
-            ) {
-                addPlanifieFieldToForm();
-            }
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
-    }
-
-    function checkURLChange() {
+    // Function to monitor React-based navigation
+    function monitorNavigation() {
         let lastURL = window.location.href;
 
         setInterval(() => {
             const currentURL = window.location.href;
+
             if (currentURL !== lastURL) {
                 lastURL = currentURL;
 
+                // Check if the URL matches the relevant pages
                 if (
                     currentURL.includes('/#/partnerOrders') ||
                     currentURL.includes('/#/orders')
                 ) {
-                    addPlanifieFieldToForm();
-                    monitorDOMChanges();
+                    setTimeout(() => {
+                        addPlanifieFieldToForm(); // Ensure the form is recreated
+                    }, 500); // Delay for React rendering
                 }
             }
-        }, 1000);
+        }, 500); // Check for navigation changes every 500ms
     }
 
     // Initialize the script
-    checkURLChange();
+    monitorNavigation();
     addPlanifieFieldToForm();
-    monitorDOMChanges();
 })();
