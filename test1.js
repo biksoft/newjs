@@ -43,20 +43,28 @@
         form.style.fontSize = '16px'; // Double the size of text
     }
 
-    // Function to create and insert the new form
-    function createNewForm() {
-        // Find the span element and remove it
-        const span = document.querySelector('span');
-        if (span) {
-            span.remove(); // Remove the existing span element
+    // Function to create and insert the new form between the <form> and <span>
+    function createNewFormBetween() {
+        // Find the <form class="jss55 jss56"> element
+        const existingForm = document.querySelector('form.jss55.jss56');
+        if (!existingForm) {
+            console.error('The form.jss55.jss56 was not found.');
+            return;
+        }
+
+        // Find the next sibling <span> element
+        const nextSiblingSpan = existingForm.nextElementSibling;
+        if (!nextSiblingSpan || nextSiblingSpan.tagName !== 'SPAN') {
+            console.error('The <span> element was not found as the next sibling of the form.');
+            return;
         }
 
         // Create the new form element
-        const form = document.createElement('form');
-        form.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
+        const newForm = document.createElement('form');
+        newForm.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
 
-        // Apply modern styling to the form
-        styleForm(form);
+        // Apply modern styling to the new form
+        styleForm(newForm);
 
         // Create a new div to contain the "Planifie" field
         const fieldDiv = document.createElement('div');
@@ -84,13 +92,11 @@
         fieldDiv.appendChild(label);
         fieldDiv.appendChild(countSpan);
 
-        // Append the new fieldDiv to the form
-        form.appendChild(fieldDiv);
+        // Append the new fieldDiv to the new form
+        newForm.appendChild(fieldDiv);
 
-        // Insert the form where the span was located
-        if (span && span.parentNode) {
-            span.parentNode.appendChild(form);
-        }
+        // Insert the new form between the existing form and the <span>
+        existingForm.parentNode.insertBefore(newForm, nextSiblingSpan);
 
         // Set up the interval to refresh the count every 10 seconds
         setInterval(() => {
@@ -218,8 +224,8 @@
     window.addEventListener('load', () => {
         initializeObserver();
 
-        // Create and insert the new form
-        createNewForm();
+        // Create and insert the new form between <form class="jss55 jss56"> and <span>
+        createNewFormBetween();
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
     });
