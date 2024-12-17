@@ -43,17 +43,22 @@
         form.style.fontSize = '16px'; // Double the size of text
     }
 
-    // Function to add the new field to the form
-    function addPlanifieFieldToForm(form) {
-        if (!form) {
-            console.error('The form was not found.');
-            return;
+    // Function to create and insert the new form
+    function createNewForm() {
+        // Find the span element and remove it
+        const span = document.querySelector('span');
+        if (span) {
+            span.remove(); // Remove the existing span element
         }
+
+        // Create the new form element
+        const form = document.createElement('form');
+        form.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
 
         // Apply modern styling to the form
         styleForm(form);
 
-        // Create a new div to contain the field
+        // Create a new div to contain the "Planifie" field
         const fieldDiv = document.createElement('div');
         fieldDiv.className = 'filter-field';
         fieldDiv.style.marginTop = '15px';
@@ -68,19 +73,24 @@
         label.style.fontWeight = '600';
         label.style.color = '#333';
 
-        // Create a span to display the count
+        // Create a span to display the count of matching rows
         const countSpan = document.createElement('span');
         countSpan.textContent = countMatchingRows();
         countSpan.style.fontWeight = 'bold';
         countSpan.style.fontSize = '1.5em';
         countSpan.style.color = '#007bff';
 
-        // Append the label and span to the div
+        // Append the label and countSpan to the fieldDiv
         fieldDiv.appendChild(label);
         fieldDiv.appendChild(countSpan);
 
-        // Append the new field to the form
+        // Append the new fieldDiv to the form
         form.appendChild(fieldDiv);
+
+        // Insert the form where the span was located
+        if (span && span.parentNode) {
+            span.parentNode.appendChild(form);
+        }
 
         // Set up the interval to refresh the count every 10 seconds
         setInterval(() => {
@@ -208,12 +218,8 @@
     window.addEventListener('load', () => {
         initializeObserver();
 
-        // Add "Planifie" field to both forms
-        const form1 = document.querySelector('form.jss55.jss56');
-        const form2 = document.querySelector('.MuiToolbar-root.MuiToolbar-regular.jss76.jss53.MuiToolbar-gutters');
-
-        addPlanifieFieldToForm(form1);
-        addPlanifieFieldToForm(form2);
+        // Create and insert the new form
+        createNewForm();
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
     });
