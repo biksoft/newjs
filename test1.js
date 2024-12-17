@@ -152,7 +152,7 @@
                 cleanEmoji(tds[0]);
                 addEmoji(tds[0], '🔴', 'duplicate-emoji-red');
 
-                tds.slice(1, -1).forEach(td => {
+                tds.slice(1,1).forEach(td => {
                     cleanEmoji(td);
                     addEmoji(td, '🔴', 'duplicate-emoji-red');
                 });
