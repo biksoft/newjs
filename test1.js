@@ -52,9 +52,9 @@
             return;
         }
 
-        // Find the next sibling <span> element
-        const nextSiblingSpan = existingForm.nextElementSibling;
-        if (!nextSiblingSpan || nextSiblingSpan.tagName !== 'SPAN') {
+        // Find the next sibling <span> element (we will insert the new form before it)
+        const nextSibling = existingForm.nextElementSibling;
+        if (!nextSibling || nextSibling.tagName !== 'SPAN') {
             console.error('The <span> element was not found as the next sibling of the form.');
             return;
         }
@@ -95,13 +95,26 @@
         // Append the new fieldDiv to the new form
         newForm.appendChild(fieldDiv);
 
-        // Insert the new form between the existing form and the <span>
-        existingForm.parentNode.insertBefore(newForm, nextSiblingSpan);
+        // Insert the new form before the <span> element
+        existingForm.parentNode.insertBefore(newForm, nextSibling);
 
         // Set up the interval to refresh the count every 10 seconds
         setInterval(() => {
             countSpan.textContent = countMatchingRows();
         }, 10000);
+    }
+
+    // Initialize the observer and other necessary functions
+    function initializeObserver() {
+        observer = new MutationObserver(() => {
+            detectAndHighlightDuplicates();
+            highlightRows();
+            lastUpdateTimestamp = Date.now();
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+        detectAndHighlightDuplicates();
+        highlightRows();
     }
 
     // Function to highlight rows based on specific conditions
@@ -136,6 +149,7 @@
         });
     }
 
+    // Detect and highlight duplicate entries in the table
     function detectAndHighlightDuplicates() {
         if (observer) observer.disconnect();
 
@@ -180,6 +194,7 @@
         if (observer) observer.observe(document.body, { childList: true, subtree: true });
     }
 
+    // Add emoji to indicate duplicates
     function addEmoji(td, emoji, className) {
         if (!td.querySelector(`.${className}`)) {
             const emojiSpan = document.createElement('span');
@@ -189,21 +204,10 @@
         }
     }
 
+    // Clean up emoji elements from table cells
     function cleanEmoji(td) {
         const existingEmojis = td.querySelectorAll('.duplicate-emoji-red, .duplicate-emoji-green');
         existingEmojis.forEach(emoji => emoji.remove());
-    }
-
-    function initializeObserver() {
-        observer = new MutationObserver(() => {
-            detectAndHighlightDuplicates();
-            highlightRows();
-            lastUpdateTimestamp = Date.now();
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
-        detectAndHighlightDuplicates();
-        highlightRows();
     }
 
     function handleVisibilityChange() {
@@ -213,14 +217,7 @@
         }
     }
 
-    // Initialize the observer and other necessary functions
-    setInterval(() => {
-        if (Date.now() - lastUpdateTimestamp > 500) {
-            detectAndHighlightDuplicates();
-            highlightRows();
-        }
-    }, 500);
-
+    // Initialize everything when the page is loaded
     window.addEventListener('load', () => {
         initializeObserver();
 
@@ -229,4 +226,5 @@
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
     });
+
 })();
