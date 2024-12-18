@@ -316,7 +316,7 @@ function createPlanifieResultsForm() {
 
         // Table Header
         const headerRow = document.createElement('tr');
-        ['Collect Point', 'Order ID', 'Order Date'].forEach(headerText => {
+        ['Collect Point', 'Order ID', 'Date Commande'].forEach(headerText => {
             const th = document.createElement('th');
             th.textContent = headerText;
             th.style.border = '1px solid #ddd';
