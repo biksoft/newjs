@@ -10,7 +10,7 @@
         if (!tbody) return 0;
 
         const rows = tbody.querySelectorAll('tr');
-        const matchingRows = Array.from(rows).filter(tr => {
+        return Array.from(rows).filter(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
 
@@ -20,8 +20,7 @@
                 (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
                  typeCell?.textContent.trim() === 'Planifiée')
             );
-        });
-        return matchingRows.length;
+        }).length;
     }
 
     // Function to retrieve Planifie results
@@ -55,19 +54,8 @@
         return results;
     }
 
-    // Function to style the form
-    function styleForm(form) {
-        form.style.border = '2px dashed rgb(0, 123, 255)';
-        form.style.padding = '20px';
-        form.style.margin = '10px';
-        form.style.borderRadius = '8px';
-        form.style.backgroundColor = 'rgb(249, 249, 249)';
-        form.style.fontFamily = 'Arial, sans-serif';
-        form.style.fontSize = '16px';
-    }
-
-    // Function to create and insert the new form
-    function createNewFormBetween() {
+    // Function to display results in a separate form
+    function createPlanifieResultsForm() {
         const existingForm = document.querySelector('form.jss55.jss56');
         if (!existingForm) return;
 
@@ -79,13 +67,19 @@
             newForm = document.createElement('form');
             newForm.id = 'planifie-results-form';
             newForm.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
-            styleForm(newForm);
+
+            newForm.style.border = '2px dashed rgb(0, 123, 255)';
+            newForm.style.padding = '20px';
+            newForm.style.margin = '10px';
+            newForm.style.borderRadius = '8px';
+            newForm.style.backgroundColor = 'rgb(249, 249, 249)';
+            newForm.style.fontFamily = 'Arial, sans-serif';
+            newForm.style.fontSize = '16px';
+
             existingForm.parentNode.insertBefore(newForm, nextSibling);
         }
 
-        // Update content
         newForm.innerHTML = '';
-
         const fieldDiv = document.createElement('div');
         fieldDiv.style.marginTop = '15px';
         fieldDiv.style.fontSize = '1.5em';
@@ -101,7 +95,6 @@
         fieldDiv.appendChild(countSpan);
         newForm.appendChild(fieldDiv);
 
-        // Add results list
         const results = getPlanifieResults();
         results.forEach(result => {
             const resultDiv = document.createElement('div');
@@ -109,29 +102,14 @@
             resultDiv.style.fontSize = '1.2em';
             resultDiv.style.color = 'rgb(0, 123, 255)';
             resultDiv.style.marginTop = '5px';
-            resultDiv.style.display = 'block'; // Ensure single line
+            resultDiv.style.display = 'block';
             newForm.appendChild(resultDiv);
         });
     }
 
-    // Observer to detect changes and refresh functionality
-    function initializeObserver() {
-        observer = new MutationObserver(() => {
-            detectAndHighlightDuplicates();
-            highlightRows();
-            createNewFormBetween();
-            lastUpdateTimestamp = Date.now();
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-        detectAndHighlightDuplicates();
-        highlightRows();
-    }
-
     // Function to highlight rows based on specific conditions
     function highlightRows() {
-        const rows = document.querySelectorAll(
-            'tr[resource="orders"], tr[resource="partnerOrders"]'
-        );
+        const rows = document.querySelectorAll('tr[resource="orders"], tr[resource="partnerOrders"]');
 
         rows.forEach(row => {
             const clientStatus = row.querySelector('td.column-client_status span')?.textContent.trim();
@@ -149,7 +127,7 @@
         });
     }
 
-    // Function to detect and highlight duplicates
+    // Function to detect and highlight duplicate values
     function detectAndHighlightDuplicates() {
         const tdElements = document.querySelectorAll('td.column-order_id span, td.column-code span');
         const values = Array.from(tdElements).map(span => ({
@@ -167,13 +145,37 @@
             const { tds } = valueCounts[value];
             if (tds.length > 1) {
                 tds.forEach(td => td.style.backgroundColor = '#ffcccc');
+                addEmoji(tds[0], '🔴', 'duplicate-emoji-red');
+                addEmoji(tds[tds.length - 1], '✅', 'duplicate-emoji-green');
             }
         });
     }
 
+    // Function to add emojis
+    function addEmoji(td, emoji, className) {
+        if (!td.querySelector(`.${className}`)) {
+            const emojiSpan = document.createElement('span');
+            emojiSpan.textContent = emoji;
+            emojiSpan.classList.add(className);
+            td.appendChild(emojiSpan);
+        }
+    }
+
+    // Initialize observer and refresh functions
+    function initializeObserver() {
+        observer = new MutationObserver(() => {
+            detectAndHighlightDuplicates();
+            highlightRows();
+            createPlanifieResultsForm();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        detectAndHighlightDuplicates();
+        highlightRows();
+        createPlanifieResultsForm();
+    }
+
     window.addEventListener('load', () => {
         initializeObserver();
-        createNewFormBetween();
-        setInterval(() => createNewFormBetween(), 10000); // Refresh every 10 seconds
+        setInterval(() => createPlanifieResultsForm(), 10000); // Refresh results every 10 seconds
     });
 })();
