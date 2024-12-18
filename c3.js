@@ -216,117 +216,88 @@
             highlightRows();
         }
     }
-// Function to count matching "Planifiée" rows
-function countMatchingRows() {
-    const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
-    if (!tbody) return 0;
-
-    const rows = tbody.querySelectorAll('tr');
-    return Array.from(rows).filter(tr => {
-        const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
-        const typeCell = tr.querySelector('td.column-type span');
-
-        return (
-            (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-             typeCell?.textContent.trim() === 'Planifiée') ||
-            (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-             typeCell?.textContent.trim() === 'Planifiée')
-        );
-    }).length;
-}
-
-// Function to get "Planifiée" rows and format the results
-function getPlanifieResults() {
-    const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
-    const results = [];
-    if (!tbody) return results;
-
-    const rows = tbody.querySelectorAll('tr');
-    rows.forEach(tr => {
-        const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
-        const typeCell = tr.querySelector('td.column-type span');
-
-        if (
-            (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-             typeCell?.textContent.trim() === 'Planifiée') ||
-            (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-             typeCell?.textContent.trim() === 'Planifiée')
-        ) {
-            const collectPointCell = tr.querySelector('td.column-collect_point\\.name span');
-            const orderIdCell = tr.querySelector('td.column-order_id span');
-            const orderDateCell = tr.querySelector('td.column-order_date span');
-
-            if (collectPointCell && orderIdCell && orderDateCell) {
-                results.push(
-                    `${collectPointCell.textContent.trim()} [${orderIdCell.textContent.trim()}] : ${orderDateCell.textContent.trim()}`
-                );
-            }
+    function createPlanifieResultsForm() {
+        // Find the form container
+        const existingForm = document.querySelector('form.jss55.jss56');
+        if (!existingForm) return;
+    
+        const nextSibling = existingForm.nextElementSibling;
+        if (!nextSibling || nextSibling.tagName !== 'SPAN') return;
+    
+        // Create or update the result container
+        let newContainer = document.getElementById('planifie-results-container');
+        if (!newContainer) {
+            newContainer = document.createElement('div');
+            newContainer.id = 'planifie-results-container';
+            newContainer.style.margin = '10px';
+            newContainer.style.padding = '10px';
+            newContainer.style.border = '2px dashed rgb(0, 123, 255)';
+            newContainer.style.borderRadius = '8px';
+            newContainer.style.backgroundColor = 'rgb(249, 249, 249)';
+            newContainer.style.fontFamily = 'Arial, sans-serif';
+    
+            existingForm.parentNode.insertBefore(newContainer, nextSibling);
         }
-    });
-    return results;
-}
-
-// Function to display Planifie results in a form
-function createPlanifieResultsForm() {
-    // Find the form container
-    const existingForm = document.querySelector('form.jss55.jss56');
-    if (!existingForm) return;
-
-    const nextSibling = existingForm.nextElementSibling;
-    if (!nextSibling || nextSibling.tagName !== 'SPAN') return;
-
-    // Create or update the result form
-    let newForm = document.getElementById('planifie-results-form');
-    if (!newForm) {
-        newForm = document.createElement('form');
-        newForm.id = 'planifie-results-form';
-        newForm.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
-
-        // Style the form
-        newForm.style.border = '2px dashed rgb(0, 123, 255)';
-        newForm.style.padding = '20px';
-        newForm.style.margin = '10px';
-        newForm.style.borderRadius = '8px';
-        newForm.style.backgroundColor = 'rgb(249, 249, 249)';
-        newForm.style.fontFamily = 'Arial, sans-serif';
-        newForm.style.fontSize = '16px';
-
-        existingForm.parentNode.insertBefore(newForm, nextSibling);
+    
+        // Clear previous content
+        newContainer.innerHTML = '';
+    
+        // Add the count
+        const count = countMatchingRows();
+        const results = getPlanifieResults();
+    
+        const countDiv = document.createElement('div');
+        countDiv.style.fontSize = '1.5em';
+        countDiv.style.fontWeight = '600';
+        countDiv.innerHTML = `<span>Planifie: </span><span style="color: rgb(0, 123, 255);">${count}</span>`;
+        newContainer.appendChild(countDiv);
+    
+        // Create a table for the results
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.marginTop = '10px';
+        table.style.borderCollapse = 'collapse';
+        table.style.fontSize = '1.2em';
+    
+        // Add table header
+        const headerRow = document.createElement('tr');
+        headerRow.style.backgroundColor = 'rgb(220, 220, 220)';
+        const headerContent = ['Collect Point', 'Order ID', 'Order Date'];
+        headerContent.forEach(headerText => {
+            const th = document.createElement('th');
+            th.textContent = headerText;
+            th.style.padding = '8px';
+            th.style.border = '1px solid rgb(200, 200, 200)';
+            th.style.textAlign = 'left';
+            headerRow.appendChild(th);
+        });
+        table.appendChild(headerRow);
+    
+        // Add table rows
+        results.forEach(result => {
+            const row = document.createElement('tr');
+            const parts = result.match(/^(.*) \[(.*)\] : (.*)$/); // Extract parts using regex
+    
+            if (parts) {
+                const [, collectPoint, orderId, orderDate] = parts;
+    
+                [collectPoint, orderId, orderDate].forEach(text => {
+                    const td = document.createElement('td');
+                    td.textContent = text;
+                    td.style.padding = '8px';
+                    td.style.border = '1px solid rgb(200, 200, 200)';
+                    row.appendChild(td);
+                });
+    
+                table.appendChild(row);
+            }
+        });
+    
+        newContainer.appendChild(table);
     }
+    
 
-    // Update form content
-    newForm.innerHTML = '';
-    const count = countMatchingRows();
-    const results = getPlanifieResults();
-
-    // Add the count
-    const countDiv = document.createElement('div');
-    countDiv.style.marginTop = '15px';
-    countDiv.style.fontSize = '1.5em';
-    countDiv.style.fontWeight = '600';
-    countDiv.innerHTML = `<span>Planifie: </span><span style="color: rgb(0, 123, 255);">${count}</span>`;
-    newForm.appendChild(countDiv);
-
-    // Add each result on a new line
-    results.forEach(result => {
-        const resultDiv = document.createElement('div');
-        resultDiv.textContent = result;
-        resultDiv.style.fontSize = '1.2em';
-        resultDiv.style.color = 'rgb(0, 123, 255)';
-        resultDiv.style.marginTop = '5px';
-        resultDiv.style.display = 'block';
-        newForm.appendChild(resultDiv);
-    });
-}
-
-// Call the function to display results
-window.addEventListener('load', () => {
-    createPlanifieResultsForm();
-    setInterval(createPlanifieResultsForm, 10000); // Refresh results every 10 seconds
-});
-
-
-
+    
     // Initialize everything when the page is loaded
     window.addEventListener('load', () => {
         initializeObserver();
