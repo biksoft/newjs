@@ -217,83 +217,84 @@
         }
     }
     function createPlanifieResultsForm() {
-        // Find the form container
+        console.log("Executing createPlanifieResultsForm...");
+    
+        // Step 1: Target the correct container
         const existingForm = document.querySelector('form.jss55.jss56');
-        if (!existingForm) return;
-    
-        const nextSibling = existingForm.nextElementSibling;
-        if (!nextSibling || nextSibling.tagName !== 'SPAN') return;
-    
-        // Create or update the result container
-        let newContainer = document.getElementById('planifie-results-container');
-        if (!newContainer) {
-            newContainer = document.createElement('div');
-            newContainer.id = 'planifie-results-container';
-            newContainer.style.margin = '10px';
-            newContainer.style.padding = '10px';
-            newContainer.style.border = '2px dashed rgb(0, 123, 255)';
-            newContainer.style.borderRadius = '8px';
-            newContainer.style.backgroundColor = 'rgb(249, 249, 249)';
-            newContainer.style.fontFamily = 'Arial, sans-serif';
-    
-            existingForm.parentNode.insertBefore(newContainer, nextSibling);
+        if (!existingForm) {
+            console.warn("No form container found with class 'jss55 jss56'.");
+            return;
         }
     
-        // Clear previous content
-        newContainer.innerHTML = '';
+        const nextSibling = existingForm.nextElementSibling;
+        if (!nextSibling || nextSibling.tagName !== 'SPAN') {
+            console.warn("No appropriate sibling element found.");
+            return;
+        }
     
-        // Add the count
+        // Step 2: Create or update the result container
+        let container = document.getElementById('planifie-results-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'planifie-results-container';
+            container.style.cssText = `
+                margin: 10px;
+                padding: 10px;
+                border: 2px dashed rgb(0, 123, 255);
+                border-radius: 8px;
+                background-color: rgb(249, 249, 249);
+                font-family: Arial, sans-serif;
+            `;
+    
+            existingForm.parentNode.insertBefore(container, nextSibling);
+        }
+    
+        // Step 3: Clear the container content
+        container.innerHTML = '';
+    
+        // Step 4: Retrieve and display results
         const count = countMatchingRows();
         const results = getPlanifieResults();
     
+        // Add the count
         const countDiv = document.createElement('div');
-        countDiv.style.fontSize = '1.5em';
-        countDiv.style.fontWeight = '600';
+        countDiv.style.cssText = "font-size: 1.5em; font-weight: 600;";
         countDiv.innerHTML = `<span>Planifie: </span><span style="color: rgb(0, 123, 255);">${count}</span>`;
-        newContainer.appendChild(countDiv);
+        container.appendChild(countDiv);
     
-        // Create a table for the results
+        // Create a table for results
         const table = document.createElement('table');
-        table.style.width = '100%';
-        table.style.marginTop = '10px';
-        table.style.borderCollapse = 'collapse';
-        table.style.fontSize = '1.2em';
+        table.style.cssText = "width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 1.2em;";
     
         // Add table header
         const headerRow = document.createElement('tr');
-        headerRow.style.backgroundColor = 'rgb(220, 220, 220)';
-        const headerContent = ['Collect Point', 'Order ID', 'Order Date'];
-        headerContent.forEach(headerText => {
+        ['Collect Point', 'Order ID', 'Order Date'].forEach(text => {
             const th = document.createElement('th');
-            th.textContent = headerText;
-            th.style.padding = '8px';
-            th.style.border = '1px solid rgb(200, 200, 200)';
-            th.style.textAlign = 'left';
+            th.textContent = text;
+            th.style.cssText = "padding: 8px; border: 1px solid #ccc; background-color: #e0e0e0; text-align: left;";
             headerRow.appendChild(th);
         });
         table.appendChild(headerRow);
     
-        // Add table rows
+        // Add table rows with results
         results.forEach(result => {
             const row = document.createElement('tr');
-            const parts = result.match(/^(.*) \[(.*)\] : (.*)$/); // Extract parts using regex
+            const parts = result.match(/^(.*) \[(.*)\] : (.*)$/);
     
             if (parts) {
                 const [, collectPoint, orderId, orderDate] = parts;
-    
                 [collectPoint, orderId, orderDate].forEach(text => {
                     const td = document.createElement('td');
                     td.textContent = text;
-                    td.style.padding = '8px';
-                    td.style.border = '1px solid rgb(200, 200, 200)';
+                    td.style.cssText = "padding: 8px; border: 1px solid #ccc;";
                     row.appendChild(td);
                 });
-    
                 table.appendChild(row);
             }
         });
     
-        newContainer.appendChild(table);
+        container.appendChild(table);
+        console.log("Results rendered successfully!");
     }
     
 
