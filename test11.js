@@ -110,6 +110,10 @@
             resultDiv.style.color = 'rgb(0, 123, 255)';
             resultDiv.style.marginTop = '5px';
             newForm.appendChild(resultDiv);
+
+            // Add a line break after each result for single-line separation
+            const lineBreak = document.createElement('br');
+            newForm.appendChild(lineBreak);
         });
     }
 
