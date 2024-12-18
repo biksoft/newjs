@@ -270,31 +270,31 @@ function getPlanifieResults() {
 
 // Function to create a formatted table in a form
 function createPlanifieResultsForm() {
-    const existingForm = document.querySelector('form.jss55.jss56');
-    if (!existingForm) return;
-
-    const nextSibling = existingForm.nextElementSibling;
-    if (!nextSibling || nextSibling.tagName !== 'SPAN') return;
-
-    // Create or update the result form
-    let newForm = document.getElementById('planifie-results-form');
-    if (!newForm) {
-        newForm = document.createElement('form');
-        newForm.id = 'planifie-results-form';
-        newForm.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
-        newForm.style.border = '2px dashed rgb(0, 123, 255)';
-        newForm.style.padding = '20px';
-        newForm.style.margin = '10px';
-        newForm.style.borderRadius = '8px';
-        newForm.style.backgroundColor = 'rgb(249, 249, 249)';
-        newForm.style.fontFamily = 'Arial, sans-serif';
-        newForm.style.fontSize = '16px';
-
-        existingForm.parentNode.insertBefore(newForm, nextSibling);
+    // Remove any existing form to avoid duplication
+    const existingForm = document.getElementById('planifie-results-form');
+    if (existingForm) {
+        existingForm.remove();
     }
 
-    // Clear previous content
-    newForm.innerHTML = '';
+    const targetForm = document.querySelector('form.jss55.jss56');
+    if (!targetForm) return;
+
+    const nextSibling = targetForm.nextElementSibling;
+    if (!nextSibling || nextSibling.tagName !== 'SPAN') return;
+
+    // Create a new form
+    const newForm = document.createElement('form');
+    newForm.id = 'planifie-results-form';
+    newForm.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
+    newForm.style.border = '2px dashed rgb(0, 123, 255)';
+    newForm.style.padding = '20px';
+    newForm.style.margin = '10px';
+    newForm.style.borderRadius = '8px';
+    newForm.style.backgroundColor = 'rgb(249, 249, 249)';
+    newForm.style.fontFamily = 'Arial, sans-serif';
+    newForm.style.fontSize = '16px';
+
+    targetForm.parentNode.insertBefore(newForm, nextSibling);
 
     // Add the count
     const count = countMatchingRows();
@@ -353,7 +353,9 @@ function createPlanifieResultsForm() {
 // Call the function to display results
 window.addEventListener('load', () => {
     createPlanifieResultsForm();
-    setInterval(createPlanifieResultsForm, 10000); // Refresh results every 10 seconds
+    setInterval(() => {
+        createPlanifieResultsForm(); // Refresh results every 10 seconds
+    }, 10000);
 });
 
 
