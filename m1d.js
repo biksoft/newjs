@@ -101,7 +101,7 @@
         // Set up the interval to refresh the count every 10 seconds
         setInterval(() => {
             countSpan.textContent = countMatchingRows();
-        }, 10000);
+        }, 1000);
     }
 
     // Initialize the observer and other necessary functions
@@ -355,7 +355,7 @@ window.addEventListener('load', () => {
     createPlanifieResultsForm();
     setInterval(() => {
         createPlanifieResultsForm(); // Refresh results every 10 seconds
-    }, 10000);
+    }, 1000);
 });
 
 
