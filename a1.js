@@ -3,38 +3,33 @@
 
     let observer;
     let lastUpdateTimestamp = Date.now();
-    let previousCount = 0;  // Track the previous count to avoid unnecessary updates
 
     // Function to count rows matching the specified conditions
     function countMatchingRows() {
+        // Select all rows in the table body
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
+
         if (!tbody) {
             console.error('The table body was not found.');
             return 0;
         }
 
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        const matchingRows = rows.filter(tr => {
+        const rows = tbody.querySelectorAll('tr');
+
+        // Filter rows based on the conditions
+        const matchingRows = Array.from(rows).filter(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
+
             return (
                 (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-                 typeCell?.textContent.trim() === 'Planifiée') ||
+                typeCell?.textContent.trim() === 'Planifiée') ||
                 (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-                 typeCell?.textContent.trim() === 'Planifiée')
+                typeCell?.textContent.trim() === 'Planifiée')
             );
         });
 
         return matchingRows.length;
-    }
-
-    // Function to update the displayed count if it has changed
-    function updateCount() {
-        const count = countMatchingRows();
-        if (count !== previousCount) {
-            previousCount = count;
-            document.querySelector('.filter-field span').textContent = count;
-        }
     }
 
     // Function to style the form
@@ -48,18 +43,30 @@
         form.style.fontSize = '16px'; // Double the size of text
     }
 
-    // Function to add the new field to the form
-    function addPlanifieFieldToForm() {
-        const form = document.querySelector('form.jss55.jss56');
-        if (!form) {
-            console.error('The form was not found.');
+    // Function to create and insert the new form between the <form> and <span>
+    function createNewFormBetween() {
+        // Find the <form class="jss55 jss56"> element
+        const existingForm = document.querySelector('form.jss55.jss56');
+        if (!existingForm) {
+            console.error('The form.jss55.jss56 was not found.');
             return;
         }
 
-        // Apply modern styling to the form
-        styleForm(form);
+        // Find the next sibling <span> element (we will insert the new form before it)
+        const nextSibling = existingForm.nextElementSibling;
+        if (!nextSibling || nextSibling.tagName !== 'SPAN') {
+            console.error('The <span> element was not found as the next sibling of the form.');
+            return;
+        }
 
-        // Create a new div to contain the field
+        // Create the new form element
+        const newForm = document.createElement('form');
+        newForm.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
+
+        // Apply modern styling to the new form
+        styleForm(newForm);
+
+        // Create a new div to contain the "Planifie" field
         const fieldDiv = document.createElement('div');
         fieldDiv.className = 'filter-field';
         fieldDiv.style.marginTop = '15px';
@@ -74,22 +81,40 @@
         label.style.fontWeight = '600';
         label.style.color = '#333';
 
-        // Create a span to display the count
+        // Create a span to display the count of matching rows
         const countSpan = document.createElement('span');
         countSpan.textContent = countMatchingRows();
         countSpan.style.fontWeight = 'bold';
         countSpan.style.fontSize = '1.5em';
         countSpan.style.color = '#007bff';
 
-        // Append the label and span to the div
+        // Append the label and countSpan to the fieldDiv
         fieldDiv.appendChild(label);
         fieldDiv.appendChild(countSpan);
 
-        // Append the new field to the form
-        form.appendChild(fieldDiv);
+        // Append the new fieldDiv to the new form
+        newForm.appendChild(fieldDiv);
+
+        // Insert the new form before the <span> element
+        existingForm.parentNode.insertBefore(newForm, nextSibling);
 
         // Set up the interval to refresh the count every 10 seconds
-        setInterval(updateCount, 10000);
+        setInterval(() => {
+            countSpan.textContent = countMatchingRows();
+        }, 10000);
+    }
+
+    // Initialize the observer and other necessary functions
+    function initializeObserver() {
+        observer = new MutationObserver(() => {
+            detectAndHighlightDuplicates();
+            highlightRows();
+            lastUpdateTimestamp = Date.now();
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+        detectAndHighlightDuplicates();
+        highlightRows();
     }
 
     // Function to highlight rows based on specific conditions
@@ -124,6 +149,7 @@
         });
     }
 
+    // Detect and highlight duplicate entries in the table
     function detectAndHighlightDuplicates() {
         if (observer) observer.disconnect();
 
@@ -168,6 +194,7 @@
         if (observer) observer.observe(document.body, { childList: true, subtree: true });
     }
 
+    // Add emoji to indicate duplicates
     function addEmoji(td, emoji, className) {
         if (!td.querySelector(`.${className}`)) {
             const emojiSpan = document.createElement('span');
@@ -177,21 +204,10 @@
         }
     }
 
+    // Clean up emoji elements from table cells
     function cleanEmoji(td) {
         const existingEmojis = td.querySelectorAll('.duplicate-emoji-red, .duplicate-emoji-green');
         existingEmojis.forEach(emoji => emoji.remove());
-    }
-
-    function initializeObserver() {
-        observer = new MutationObserver(() => {
-            detectAndHighlightDuplicates();
-            highlightRows();
-            lastUpdateTimestamp = Date.now();
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
-        detectAndHighlightDuplicates();
-        highlightRows();
     }
 
     function handleVisibilityChange() {
@@ -201,17 +217,14 @@
         }
     }
 
-    // Initialize the observer and other necessary functions
-    setInterval(() => {
-        if (Date.now() - lastUpdateTimestamp > 500) {
-            detectAndHighlightDuplicates();
-            highlightRows();
-        }
-    }, 500);
-
+    // Initialize everything when the page is loaded
     window.addEventListener('load', () => {
         initializeObserver();
-        addPlanifieFieldToForm();
+
+        // Create and insert the new form between <form class="jss55 jss56"> and <span>
+        createNewFormBetween();
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
     });
+
 })();
