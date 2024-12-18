@@ -304,7 +304,7 @@ function createPlanifieResultsForm() {
     countDiv.style.marginTop = '15px';
     countDiv.style.fontSize = '1.5em';
     countDiv.style.fontWeight = '600';
-    countDiv.innerHTML = <span>Planifie: </span><span style="color: rgb(0, 123, 255);">${count}</span>;
+    countDiv.innerHTML = `<span>Planifie: </span><span style="color: rgb(0, 123, 255);">${count}</span>`;
     newForm.appendChild(countDiv);
 
     // Create a table for results
@@ -343,7 +343,7 @@ function createPlanifieResultsForm() {
         newForm.appendChild(table);
     } else {
         const noDataDiv = document.createElement('div');
-        noDataDiv.textContent = 'aucun commande planifie';
+        noDataDiv.textContent = 'No matching rows found.';
         noDataDiv.style.color = 'red';
         noDataDiv.style.marginTop = '10px';
         newForm.appendChild(noDataDiv);
@@ -355,6 +355,7 @@ window.addEventListener('load', () => {
     createPlanifieResultsForm();
     setInterval(createPlanifieResultsForm, 10000); // Refresh results every 10 seconds
 });
+
 
     
     // Initialize everything when the page is loaded
