@@ -4,13 +4,40 @@
     let observer;
     let lastUpdateTimestamp = Date.now();
 
-    // Function to count and get rows matching Planifiée
-    function getPlanifieRows() {
+    // Function to count rows matching the specified conditions
+    function countMatchingRows() {
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
-        if (!tbody) return { count: 0, results: [] };
+
+        if (!tbody) {
+            console.error('The table body was not found.');
+            return 0;
+        }
 
         const rows = tbody.querySelectorAll('tr');
+
+        const matchingRows = Array.from(rows).filter(tr => {
+            const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
+            const typeCell = tr.querySelector('td.column-type span');
+
+            return (
+                (livreurStatusCell?.textContent.trim() === 'En recherche' &&
+                 typeCell?.textContent.trim() === 'Planifiée') ||
+                (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
+                 typeCell?.textContent.trim() === 'Planifiée')
+            );
+        });
+
+        return matchingRows.length;
+    }
+
+    // Function to get details of rows matching the conditions
+    function getPlanifieResults() {
+        const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
         const results = [];
+
+        if (!tbody) return results;
+
+        const rows = tbody.querySelectorAll('tr');
 
         rows.forEach(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
@@ -18,9 +45,9 @@
 
             if (
                 (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-                    typeCell?.textContent.trim() === 'Planifiée') ||
+                 typeCell?.textContent.trim() === 'Planifiée') ||
                 (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-                    typeCell?.textContent.trim() === 'Planifiée')
+                 typeCell?.textContent.trim() === 'Planifiée')
             ) {
                 const collectPointCell = tr.querySelector('td.column-collect_point\\.name span');
                 const orderIdCell = tr.querySelector('td.column-order_id span');
@@ -34,10 +61,10 @@
             }
         });
 
-        return { count: results.length, results };
+        return results;
     }
 
-    // Function to style the new form
+    // Function to style the form
     function styleForm(form) {
         form.style.border = '2px dashed #007bff';
         form.style.padding = '20px';
@@ -48,10 +75,13 @@
         form.style.fontSize = '16px';
     }
 
-    // Function to update the form with Planifie count and results
-    function updatePlanifieForm() {
+    // Function to create and insert the new form between the <form> and <span>
+    function createNewFormBetween() {
         const existingForm = document.querySelector('form.jss55.jss56');
         if (!existingForm) return;
+
+        const nextSibling = existingForm.nextElementSibling;
+        if (!nextSibling || nextSibling.tagName !== 'SPAN') return;
 
         let newForm = document.getElementById('planifie-results-form');
         if (!newForm) {
@@ -59,48 +89,54 @@
             newForm.id = 'planifie-results-form';
             newForm.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
             styleForm(newForm);
-
-            const nextSibling = existingForm.nextElementSibling;
             existingForm.parentNode.insertBefore(newForm, nextSibling);
         }
 
-        // Clear the form content
+        // Update form content
         newForm.innerHTML = '';
 
-        // Display Planifie count
-        const { count, results } = getPlanifieRows();
+        // Planifie count
+        const fieldDiv = document.createElement('div');
+        fieldDiv.style.marginTop = '15px';
+        fieldDiv.style.fontSize = '1.5em';
+        fieldDiv.style.fontWeight = '600';
 
-        const countLabel = document.createElement('div');
-        countLabel.style.fontSize = '1.5em';
-        countLabel.style.fontWeight = '600';
-        countLabel.textContent = `Planifie: ${count}`;
-        newForm.appendChild(countLabel);
+        const label = document.createElement('span');
+        label.textContent = 'Planifie: ';
+        const countSpan = document.createElement('span');
+        countSpan.style.color = '#007bff';
+        countSpan.textContent = countMatchingRows();
 
-        // Display each result
+        fieldDiv.appendChild(label);
+        fieldDiv.appendChild(countSpan);
+        newForm.appendChild(fieldDiv);
+
+        // Planifie results list
+        const results = getPlanifieResults();
         results.forEach(result => {
             const resultDiv = document.createElement('div');
             resultDiv.textContent = result;
             resultDiv.style.fontSize = '1.2em';
             resultDiv.style.color = '#007bff';
-            resultDiv.style.margin = '5px 0';
+            resultDiv.style.marginTop = '5px';
             newForm.appendChild(resultDiv);
         });
     }
 
-    // Observer logic
+    // Initialize the observer and other necessary functions
     function initializeObserver() {
         observer = new MutationObserver(() => {
-            updatePlanifieForm();
-            highlightRows(); // Preserve coloring logic
             detectAndHighlightDuplicates();
+            highlightRows();
             lastUpdateTimestamp = Date.now();
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
-        updatePlanifieForm();
+        detectAndHighlightDuplicates();
+        highlightRows();
     }
 
-    // Function to highlight rows
+    // Function to highlight rows based on specific conditions
     function highlightRows() {
         const rows = document.querySelectorAll(
             'tr[resource="orders"], tr[resource="partnerOrders"]'
@@ -114,14 +150,6 @@
                 row.style.backgroundColor = '#42ff79';
             } else if (clientStatus === 'En attente de paiement' || orderStatus === 'En recherche') {
                 row.style.backgroundColor = '#ffeb42';
-            } else if (clientStatus === 'En préparation' || orderStatus === 'En recherche') {
-                row.style.backgroundColor = '#ffeb42';
-            } else if (clientStatus === 'Acceptée' || orderStatus === 'En recherche') {
-                row.style.backgroundColor = '#67eef4';
-            } else if (clientStatus === 'Acceptée' || orderStatus === 'Acceptée') {
-                row.style.backgroundColor = '#ffeb42';
-            } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée') {
-                row.style.backgroundColor = '#ffeb42';
             } else if (clientStatus === 'Annulée' || orderStatus === 'Annulée') {
                 row.style.backgroundColor = '#ff4242';
             } else if (clientStatus === 'Expirée' || orderStatus === 'Expirée') {
@@ -130,7 +158,7 @@
         });
     }
 
-    // Duplicate detection logic (kept untouched)
+    // Detect and highlight duplicate entries in the table
     function detectAndHighlightDuplicates() {
         const tdElements = document.querySelectorAll('td.column-order_id span, td.column-code span');
         const values = Array.from(tdElements).map(span => ({
@@ -152,9 +180,23 @@
         });
     }
 
+    function handleVisibilityChange() {
+        if (document.visibilityState === 'visible') {
+            detectAndHighlightDuplicates();
+            highlightRows();
+        }
+    }
+
+    // Initialize everything when the page is loaded
     window.addEventListener('load', () => {
         initializeObserver();
-        updatePlanifieForm();
-        highlightRows();
+        createNewFormBetween();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Update the form every 10 seconds
+        setInterval(() => {
+            createNewFormBetween();
+        }, 10000);
     });
+
 })();
