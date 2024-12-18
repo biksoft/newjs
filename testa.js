@@ -350,12 +350,12 @@ function createPlanifieResultsForm() {
     }
 }
 
-// Call the function after 2 seconds on page load
+// Delay execution after 2 seconds when page reloads
 window.addEventListener('load', () => {
     setTimeout(() => {
         createPlanifieResultsForm();
         setInterval(createPlanifieResultsForm, 10000); // Refresh results every 10 seconds
-    }, 2000); // Wait 2 seconds after page reload
+    }, 2000); // 2 seconds delay
 });
 
 
