@@ -304,7 +304,7 @@ function createPlanifieResultsForm() {
     countDiv.style.marginTop = '15px';
     countDiv.style.fontSize = '1.5em';
     countDiv.style.fontWeight = '600';
-    countDiv.innerHTML = `<span>Planifie: </span><span style="color: rgb(0, 123, 255);">${count}</span>`;
+    countDiv.innerHTML = <span>Planifie: </span><span style="color: rgb(0, 123, 255);">${count}</span>;
     newForm.appendChild(countDiv);
 
     // Create a table for results
@@ -343,21 +343,18 @@ function createPlanifieResultsForm() {
         newForm.appendChild(table);
     } else {
         const noDataDiv = document.createElement('div');
-        noDataDiv.textContent = 'No matching rows found.';
+        noDataDiv.textContent = 'aucun commande planifie';
         noDataDiv.style.color = 'red';
         noDataDiv.style.marginTop = '10px';
         newForm.appendChild(noDataDiv);
     }
 }
 
-// Delay execution after 2 seconds when page reloads
+// Call the function to display results
 window.addEventListener('load', () => {
-    setTimeout(() => {
-        createPlanifieResultsForm();
-        setInterval(createPlanifieResultsForm, 10000); // Refresh results every 10 seconds
-    }, 2000); // 2 seconds delay
+    createPlanifieResultsForm();
+    setInterval(createPlanifieResultsForm, 10000); // Refresh results every 10 seconds
 });
-
 
     
     // Initialize everything when the page is loaded
