@@ -343,7 +343,7 @@ function createPlanifieResultsForm() {
         newForm.appendChild(table);
     } else {
         const noDataDiv = document.createElement('div');
-        noDataDiv.textContent = 'No matching rows found.';
+        noDataDiv.textContent = 'aucun commande planifie';
         noDataDiv.style.color = 'red';
         noDataDiv.style.marginTop = '10px';
         newForm.appendChild(noDataDiv);
