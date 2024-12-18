@@ -350,10 +350,12 @@ function createPlanifieResultsForm() {
     }
 }
 
-// Call the function to display results
+// Call the function after 2 seconds on page load
 window.addEventListener('load', () => {
-    createPlanifieResultsForm();
-    setInterval(createPlanifieResultsForm, 10000); // Refresh results every 10 seconds
+    setTimeout(() => {
+        createPlanifieResultsForm();
+        setInterval(createPlanifieResultsForm, 10000); // Refresh results every 10 seconds
+    }, 2000); // Wait 2 seconds after page reload
 });
 
 
