@@ -7,14 +7,9 @@
     // Function to count rows matching the specified conditions
     function countMatchingRows() {
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
-
-        if (!tbody) {
-            console.error('The table body was not found.');
-            return 0;
-        }
+        if (!tbody) return 0;
 
         const rows = tbody.querySelectorAll('tr');
-
         const matchingRows = Array.from(rows).filter(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
@@ -26,19 +21,16 @@
                  typeCell?.textContent.trim() === 'Planifiée')
             );
         });
-
         return matchingRows.length;
     }
 
-    // Function to get details of rows matching the conditions
+    // Function to retrieve Planifie results
     function getPlanifieResults() {
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
         const results = [];
-
         if (!tbody) return results;
 
         const rows = tbody.querySelectorAll('tr');
-
         rows.forEach(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
@@ -60,22 +52,21 @@
                 }
             }
         });
-
         return results;
     }
 
     // Function to style the form
     function styleForm(form) {
-        form.style.border = '2px dashed #007bff';
+        form.style.border = '2px dashed rgb(0, 123, 255)';
         form.style.padding = '20px';
         form.style.margin = '10px';
         form.style.borderRadius = '8px';
-        form.style.backgroundColor = '#f9f9f9';
+        form.style.backgroundColor = 'rgb(249, 249, 249)';
         form.style.fontFamily = 'Arial, sans-serif';
         form.style.fontSize = '16px';
     }
 
-    // Function to create and insert the new form between the <form> and <span>
+    // Function to create and insert the new form
     function createNewFormBetween() {
         const existingForm = document.querySelector('form.jss55.jss56');
         if (!existingForm) return;
@@ -92,10 +83,9 @@
             existingForm.parentNode.insertBefore(newForm, nextSibling);
         }
 
-        // Update form content
+        // Update content
         newForm.innerHTML = '';
 
-        // Planifie count
         const fieldDiv = document.createElement('div');
         fieldDiv.style.marginTop = '15px';
         fieldDiv.style.fontSize = '1.5em';
@@ -104,33 +94,33 @@
         const label = document.createElement('span');
         label.textContent = 'Planifie: ';
         const countSpan = document.createElement('span');
-        countSpan.style.color = '#007bff';
+        countSpan.style.color = 'rgb(0, 123, 255)';
         countSpan.textContent = countMatchingRows();
 
         fieldDiv.appendChild(label);
         fieldDiv.appendChild(countSpan);
         newForm.appendChild(fieldDiv);
 
-        // Planifie results list
+        // Add results list
         const results = getPlanifieResults();
         results.forEach(result => {
             const resultDiv = document.createElement('div');
             resultDiv.textContent = result;
             resultDiv.style.fontSize = '1.2em';
-            resultDiv.style.color = '#007bff';
+            resultDiv.style.color = 'rgb(0, 123, 255)';
             resultDiv.style.marginTop = '5px';
             newForm.appendChild(resultDiv);
         });
     }
 
-    // Initialize the observer and other necessary functions
+    // Observer to detect changes and refresh functionality
     function initializeObserver() {
         observer = new MutationObserver(() => {
             detectAndHighlightDuplicates();
             highlightRows();
+            createNewFormBetween();
             lastUpdateTimestamp = Date.now();
         });
-
         observer.observe(document.body, { childList: true, subtree: true });
         detectAndHighlightDuplicates();
         highlightRows();
@@ -158,7 +148,7 @@
         });
     }
 
-    // Detect and highlight duplicate entries in the table
+    // Function to detect and highlight duplicates
     function detectAndHighlightDuplicates() {
         const tdElements = document.querySelectorAll('td.column-order_id span, td.column-code span');
         const values = Array.from(tdElements).map(span => ({
@@ -180,23 +170,9 @@
         });
     }
 
-    function handleVisibilityChange() {
-        if (document.visibilityState === 'visible') {
-            detectAndHighlightDuplicates();
-            highlightRows();
-        }
-    }
-
-    // Initialize everything when the page is loaded
     window.addEventListener('load', () => {
         initializeObserver();
         createNewFormBetween();
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        // Update the form every 10 seconds
-        setInterval(() => {
-            createNewFormBetween();
-        }, 10000);
+        setInterval(() => createNewFormBetween(), 10000); // Refresh every 10 seconds
     });
-
 })();
