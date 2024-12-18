@@ -4,27 +4,40 @@
     let observer;
     let lastUpdateTimestamp = Date.now();
 
-    // Function to count rows matching the specified conditions
-    function countMatchingRows() {
+    // Function to count rows matching the specified conditions and get the formatted result
+    function getMatchingRowsDetails() {
+        // Select all rows in the table body
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
+
         if (!tbody) {
-            console.error('Table body not found');
-            return 0;
+            console.error('The table body was not found.');
+            return [];
         }
 
         const rows = tbody.querySelectorAll('tr');
-        const matchingRows = Array.from(rows).filter(tr => {
+        const results = [];
+
+        // Iterate through rows and extract relevant details
+        rows.forEach(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
-            return (
-                (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-                typeCell?.textContent.trim() === 'Planifiée') ||
-                (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-                typeCell?.textContent.trim() === 'Planifiée')
-            );
+
+            if (
+                (livreurStatusCell?.textContent.trim() === 'En recherche' && typeCell?.textContent.trim() === 'Planifiée') ||
+                (livreurStatusCell?.textContent.trim() === 'Acceptée' && typeCell?.textContent.trim() === 'Planifiée')
+            ) {
+                const nameCell = tr.querySelector('td.column-collect_point.name span');
+                const orderIdCell = tr.querySelector('td.column-order_id span');
+                const orderDateCell = tr.querySelector('td.column-order_date span');
+
+                if (nameCell && orderIdCell && orderDateCell) {
+                    // Create the result in the desired format
+                    results.push(`${nameCell.textContent.trim()} [${orderIdCell.textContent.trim()}] : ${orderDateCell.textContent.trim()}`);
+                }
+            }
         });
 
-        return matchingRows.length;
+        return results;
     }
 
     // Function to style the form
@@ -35,26 +48,30 @@
         form.style.borderRadius = '8px';
         form.style.backgroundColor = '#f9f9f9';
         form.style.fontFamily = 'Arial, sans-serif';
-        form.style.fontSize = '16px';
+        form.style.fontSize = '16px'; // Double the size of text
     }
 
     // Function to create and insert the new form between the <form> and <span>
     function createNewFormBetween() {
+        // Find the <form class="jss55 jss56"> element
         const existingForm = document.querySelector('form.jss55.jss56');
         if (!existingForm) {
-            console.error('Form not found: form.jss55.jss56');
+            console.error('The form.jss55.jss56 was not found.');
             return;
         }
 
+        // Find the next sibling <span> element (we will insert the new form before it)
         const nextSibling = existingForm.nextElementSibling;
         if (!nextSibling || nextSibling.tagName !== 'SPAN') {
-            console.error('No <span> element found after form.');
+            console.error('The <span> element was not found as the next sibling of the form.');
             return;
         }
 
         // Create the new form element
         const newForm = document.createElement('form');
         newForm.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
+
+        // Apply modern styling to the new form
         styleForm(newForm);
 
         // Create a new div to contain the "Planifie" field
@@ -64,6 +81,7 @@
         fieldDiv.style.display = 'flex';
         fieldDiv.style.alignItems = 'center';
 
+        // Create a label for the field
         const label = document.createElement('label');
         label.textContent = 'Planifie:';
         label.style.marginRight = '12px';
@@ -71,73 +89,34 @@
         label.style.fontWeight = '600';
         label.style.color = '#333';
 
-        const countSpan = document.createElement('span');
-        countSpan.textContent = countMatchingRows();
-        countSpan.style.fontWeight = 'bold';
-        countSpan.style.fontSize = '1.5em';
-        countSpan.style.color = '#007bff';
+        // Get the matching rows details
+        const matchingRowsDetails = getMatchingRowsDetails();
 
+        // Create a span to display the results
+        const resultSpan = document.createElement('span');
+        resultSpan.textContent = matchingRowsDetails.join('\n');
+        resultSpan.style.fontWeight = 'bold';
+        resultSpan.style.fontSize = '1.5em';
+        resultSpan.style.color = '#007bff';
+        resultSpan.style.whiteSpace = 'pre-wrap'; // Allow multiline display
+
+        // Append the label and resultSpan to the fieldDiv
         fieldDiv.appendChild(label);
-        fieldDiv.appendChild(countSpan);
+        fieldDiv.appendChild(resultSpan);
 
+        // Append the new fieldDiv to the new form
         newForm.appendChild(fieldDiv);
+
+        // Insert the new form before the <span> element
         existingForm.parentNode.insertBefore(newForm, nextSibling);
 
-        // Refresh the count every 10 seconds
+        // Set up the interval to refresh the results every 10 seconds
         setInterval(() => {
-            countSpan.textContent = countMatchingRows();
-            updatePlanifieResults(); // Refresh results every 10 seconds
+            resultSpan.textContent = getMatchingRowsDetails().join('\n');
         }, 10000);
-
-        // Initialize Planifie results immediately
-        updatePlanifieResults();
     }
 
-    // Function to update the "Planifie" results
-    function updatePlanifieResults() {
-        const form = document.querySelector('form.MuiToolbar-root.MuiToolbar-regular.jss52.MuiToolbar-gutters');
-        if (!form) {
-            console.error('Form not found for Planifie results');
-            return;
-        }
-
-        const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-
-        const planifieRows = rows.filter(tr => {
-            const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
-            const typeCell = tr.querySelector('td.column-type span');
-            return (
-                (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-                typeCell?.textContent.trim() === 'Planifiée') ||
-                (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-                typeCell?.textContent.trim() === 'Planifiée')
-            );
-        });
-
-        let resultsHtml = '';
-        planifieRows.forEach(row => {
-            const collectPoint = row.querySelector('td.column-collect_point.name span')?.textContent.trim();
-            const orderId = row.querySelector('td.column-order_id span')?.textContent.trim();
-            const orderDate = row.querySelector('td.column-order_date span')?.textContent.trim();
-
-            if (collectPoint && orderId && orderDate) {
-                resultsHtml += `${collectPoint} [${orderId}] : ${orderDate}<br>`;
-            }
-        });
-
-        const planifieResultsDiv = form.querySelector('.planifie-results');
-        if (!planifieResultsDiv) {
-            const newDiv = document.createElement('div');
-            newDiv.className = 'planifie-results';
-            newDiv.innerHTML = resultsHtml;
-            form.appendChild(newDiv);
-        } else {
-            planifieResultsDiv.innerHTML = resultsHtml;
-        }
-    }
-
-    // Initialize the observer and necessary functions
+    // Initialize the observer and other necessary functions
     function initializeObserver() {
         observer = new MutationObserver(() => {
             detectAndHighlightDuplicates();
@@ -152,7 +131,10 @@
 
     // Function to highlight rows based on specific conditions
     function highlightRows() {
-        const rows = document.querySelectorAll('tr[resource="orders"], tr[resource="partnerOrders"]');
+        const rows = document.querySelectorAll(
+            'tr[resource="orders"], tr[resource="partnerOrders"]'
+        );
+
         rows.forEach(row => {
             const clientStatus = row.querySelector('td.column-client_status span')?.textContent.trim();
             const orderStatus = row.querySelector('td.column-status span')?.textContent.trim();
@@ -179,11 +161,14 @@
         });
     }
 
-    // Function to detect and highlight duplicates
+    // Detect and highlight duplicate entries in the table
     function detectAndHighlightDuplicates() {
         if (observer) observer.disconnect();
 
-        const tdElements = document.querySelectorAll('td.column-order_id span, td.column-code span');
+        const tdElements = document.querySelectorAll(
+            'td.column-order_id span, td.column-code span'
+        );
+
         const values = Array.from(tdElements).map(span => ({
             value: span.textContent.trim(),
             td: span.closest('td')
@@ -204,6 +189,7 @@
             if (count > 1) {
                 cleanEmoji(tds[0]);
                 addEmoji(tds[0], '🔴', 'duplicate-emoji-red');
+
                 tds.slice(1, -1).forEach(td => {
                     cleanEmoji(td);
                     addEmoji(td, '🔴', 'duplicate-emoji-red');
@@ -220,7 +206,7 @@
         if (observer) observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    // Function to add emoji to a table cell
+    // Add emoji to indicate duplicates
     function addEmoji(td, emoji, className) {
         if (!td.querySelector(`.${className}`)) {
             const emojiSpan = document.createElement('span');
@@ -230,16 +216,27 @@
         }
     }
 
-    // Function to clean emoji from a table cell
+    // Clean up emoji elements from table cells
     function cleanEmoji(td) {
         const existingEmojis = td.querySelectorAll('.duplicate-emoji-red, .duplicate-emoji-green');
         existingEmojis.forEach(emoji => emoji.remove());
     }
 
-    // Initialize the script when the document is ready
+    function handleVisibilityChange() {
+        if (document.visibilityState === 'visible') {
+            detectAndHighlightDuplicates();
+            highlightRows();
+        }
+    }
+
+    // Initialize everything when the page is loaded
     window.addEventListener('load', () => {
         initializeObserver();
-        createNewFormBetween();  // Create the new form and results
+
+        // Create and insert the new form between <form class="jss55 jss56"> and <span>
+        createNewFormBetween();
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
     });
+
 })();
