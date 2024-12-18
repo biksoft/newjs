@@ -66,20 +66,6 @@
         form.style.fontSize = '16px';
     }
 
-    // Function to add CSS for proper rendering
-    function addCSSForResults() {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            #planifie-results-form div {
-                display: block; /* Ensure each result is on its own line */
-                margin-top: 5px;
-                font-size: 1.2em;
-                color: rgb(0, 123, 255);
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
     // Function to create and insert the new form
     function createNewFormBetween() {
         const existingForm = document.querySelector('form.jss55.jss56');
@@ -120,6 +106,10 @@
         results.forEach(result => {
             const resultDiv = document.createElement('div');
             resultDiv.textContent = result;
+            resultDiv.style.fontSize = '1.2em';
+            resultDiv.style.color = 'rgb(0, 123, 255)';
+            resultDiv.style.marginTop = '5px';
+            resultDiv.style.display = 'block'; // Ensure single line
             newForm.appendChild(resultDiv);
         });
     }
@@ -182,7 +172,6 @@
     }
 
     window.addEventListener('load', () => {
-        addCSSForResults(); // Ensure results display properly
         initializeObserver();
         createNewFormBetween();
         setInterval(() => createNewFormBetween(), 10000); // Refresh every 10 seconds
