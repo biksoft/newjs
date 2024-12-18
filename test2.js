@@ -109,11 +109,8 @@
             resultDiv.style.fontSize = '1.2em';
             resultDiv.style.color = 'rgb(0, 123, 255)';
             resultDiv.style.marginTop = '5px';
+            resultDiv.style.display = 'block'; // Ensure single line
             newForm.appendChild(resultDiv);
-
-            // Add a line break after each result for single-line separation
-            const lineBreak = document.createElement('br');
-            newForm.appendChild(lineBreak);
         });
     }
 
