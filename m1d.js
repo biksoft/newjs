@@ -120,7 +120,7 @@
     // Function to highlight rows based on specific conditions
     function highlightRows() {
         const rows = document.querySelectorAll(
-            'tr[resource="orders"], tr[resource="partnerOrders"]'
+            'tr[resource="orders"], tr[resource="partnerOrders"], tr[resource="supermarket-orders"]'
         );
 
         rows.forEach(row => {
@@ -316,7 +316,7 @@ function createPlanifieResultsForm() {
 
         // Table Header
         const headerRow = document.createElement('tr');
-        ['Collect Point', 'Order ID', 'Order Date'].forEach(headerText => {
+        ['Collect Point', 'Order ID', 'Date Commande'].forEach(headerText => {
             const th = document.createElement('th');
             th.textContent = headerText;
             th.style.border = '1px solid #ddd';
