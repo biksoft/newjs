@@ -137,6 +137,8 @@
                 row.style.backgroundColor = '#67eef4';
             } else if (clientStatus === 'Acceptée' || orderStatus === 'Acceptée') {
                 row.style.backgroundColor = '#ffeb42';
+            } else if (clientStatus === 'Collectée par le livreur' || orderStatus === 'Livreur en route') {
+                row.style.backgroundColor = '#ed7d31';
             } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée') {
                 row.style.backgroundColor = '#ffeb42';
             } else if (clientStatus === 'Prête' || orderStatus === 'Acceptée') {
