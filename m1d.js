@@ -134,15 +134,15 @@
             } else if (clientStatus === 'En préparation' || orderStatus === 'En recherche') {
                 row.style.backgroundColor = '#ffeb42';
             } else if (clientStatus === 'Acceptée' || orderStatus === 'En recherche') {
-                row.style.backgroundColor = '#67eef4';
+                row.style.backgroundColor = '#e7e6e6';
             } else if (clientStatus === 'Acceptée' || orderStatus === 'Acceptée') {
                 row.style.backgroundColor = '#ffeb42';
             } else if (clientStatus === 'Livreur en route' || orderStatus === 'Récupérée') {
-                row.style.backgroundColor = '#ed7d31';
+                row.style.backgroundColor = '#5b9bd5';
             } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée') {
-                row.style.backgroundColor = '#ffeb42';
+                row.style.backgroundColor = '#5b9bd5';
             } else if (clientStatus === 'Prête' || orderStatus === 'Acceptée') {
-                row.style.backgroundColor = '#ffeb42';
+                row.style.backgroundColor = '#5b9bd5';
             } else if (clientStatus === 'Annulée' || orderStatus === 'Annulée') {
                 row.style.backgroundColor = '#ff4242';
             } else if (clientStatus === 'Expirée' || orderStatus === 'Expirée') {
