@@ -43,6 +43,8 @@
         form.style.fontSize = '16px'; // Double the size of text
     }
 
+
+
     // Function to create and insert the new form between the <form> and <span>
     function createNewFormBetween() {
         // Find the <form class="jss55 jss56"> element
@@ -148,6 +150,16 @@
             } else if (clientStatus === 'Expirée' || orderStatus === 'Expirée') {
                 row.style.backgroundColor = '#ff4242';
             }
+document.querySelectorAll('tr.MuiTableRow-root[resource="partnerOrders"]').forEach(tr => {
+  const spans = tr.querySelectorAll('td span');
+  spans.forEach(span => {
+    if (span.textContent.trim() === 'Planifiée') {
+      console.log('Match found in row:', tr); // Debugging log
+      tr.style.backgroundColor = '#fc93d0';
+    }
+  });
+});
+
         });
     }
 
