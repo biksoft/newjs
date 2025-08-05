@@ -35,7 +35,8 @@
     // --- All Helper Functions Below ---
 
     /**
-     * This function contains the NEW coloring logic you requested.
+     * ✅ UPDATED: This function contains the corrected coloring logic.
+     * It now correctly handles colors for "Planifiée" orders based on their status.
      */
     function applyAllRowStyles() {
         const rows = document.querySelectorAll(
@@ -43,26 +44,39 @@
         );
         rows.forEach(row => {
             row.style.backgroundColor = ''; // Reset background first
+
+            // Get all status and type values from the row
+            const typeCellSpan = row.querySelector('td.column-type span');
+            const type = typeCellSpan?.textContent.trim();
             const clientStatus = row.querySelector('td.column-client_status span')?.textContent.trim();
             const orderStatus = row.querySelector('td.column-status span')?.textContent.trim();
 
-            // --- YOUR NEW COLOR RULES ---
-            if (clientStatus === 'Acceptée' && orderStatus === 'En recherche') {
-                row.style.backgroundColor = '#fc93d0'; // Pink
-            } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée') {
-                row.style.backgroundColor = '#5b9bd5'; // Blue
-            } else if (clientStatus === 'Déposée' || orderStatus === 'Déposée') {
-                row.style.backgroundColor = '#42ff79'; // Green
-            } else if (clientStatus === 'Expirée' || orderStatus === 'Expirée') {
-                row.style.backgroundColor = '#ff4242'; // Red
-            
-            // --- Other existing rules ---
-            } else if (clientStatus === 'En attente de paiement' || clientStatus === 'En préparation' || orderStatus === 'Acceptée') {
-                row.style.backgroundColor = '#ffeb42'; // Yellow for other pending statuses
-            } else if (clientStatus === 'Livreur en route' || clientStatus === 'Prête') {
-                row.style.backgroundColor = '#5b9bd5'; // Blue for other in-progress statuses
-            } else if (clientStatus === 'Annulée' || orderStatus === 'Annulée') {
-                row.style.backgroundColor = '#ff4242'; // Red for cancelled
+            // First, check if the order type is "Planifiée"
+            if (type === 'Planifiée') {
+                // --- Apply your specific color rules for "Planifiée" orders ---
+                if (clientStatus === 'Acceptée' && orderStatus === 'En recherche') {
+                    row.style.backgroundColor = '#fc93d0'; // Pink
+                } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée') {
+                    row.style.backgroundColor = '#5b9bd5'; // Blue
+                } else if (clientStatus === 'Déposée' || orderStatus === 'Déposée') {
+                    row.style.backgroundColor = '#42ff79'; // Green
+                } else if (clientStatus === 'Expirée' || orderStatus === 'Expirée') {
+                    row.style.backgroundColor = '#ff4242'; // Red
+                } else {
+                    // Default color for any other "Planifiée" status
+                    row.style.backgroundColor = '#fc93d0'; // Default Pink
+                }
+            } else {
+                // --- Rules for all NON-"Planifiée" orders ---
+                if (clientStatus === 'Déposée' || orderStatus === 'Déposée') {
+                    row.style.backgroundColor = '#42ff79';
+                } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée' || clientStatus === 'Livreur en route' || clientStatus === 'Prête') {
+                    row.style.backgroundColor = '#5b9bd5';
+                } else if (clientStatus === 'Annulée' || orderStatus === 'Annulée' || clientStatus === 'Expirée' || orderStatus === 'Expirée') {
+                    row.style.backgroundColor = '#ff4242';
+                } else if (clientStatus === 'En attente de paiement' || clientStatus === 'En préparation' || orderStatus === 'Acceptée') {
+                    row.style.backgroundColor = '#ffeb42';
+                }
             }
         });
     }
