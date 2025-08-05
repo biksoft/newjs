@@ -136,25 +136,37 @@
      * ===================================================================
      */
 
+    // ## THIS FUNCTION IS NOW SMARTER TO PREVENT FLICKERING ##
     function highlightRows() {
         const rows = document.querySelectorAll('tr[resource="orders"], tr[resource="partnerOrders"], tr[resource="supermarket-orders"]');
+        
         rows.forEach(row => {
             const clientStatus = row.querySelector('td.column-client_status span')?.textContent.trim();
             const orderStatus = row.querySelector('td.column-status span')?.textContent.trim();
             const typeStatus = row.querySelector('td.column-type span')?.textContent.trim();
-            row.style.backgroundColor = '';
+            
+            let newColor = ''; // Default: no color
+
+            // Determine what the new color SHOULD be
             if (typeStatus === 'Planifiée') {
-                row.style.backgroundColor = '#fc93d0';
+                newColor = '#fc93d0';
             } else if (clientStatus === 'Annulée' || orderStatus === 'Annulée' || clientStatus === 'Expirée' || orderStatus === 'Expirée') {
-                row.style.backgroundColor = '#ff4242';
+                newColor = '#ff4242';
             } else if (clientStatus === 'Déposée' || orderStatus === 'Déposée') {
-                row.style.backgroundColor = '#42ff79';
+                newColor = '#42ff79';
             } else if (clientStatus === 'Livreur en route' || orderStatus === 'Récupérée' || clientStatus === 'Récupérée' || (clientStatus === 'Prête' && orderStatus === 'Acceptée')) {
-                row.style.backgroundColor = '#5b9bd5';
+                newColor = '#5b9bd5';
             } else if (clientStatus === 'En attente de paiement' || clientStatus === 'En préparation' || orderStatus === 'En recherche') {
-                row.style.backgroundColor = '#ffeb42';
+                newColor = '#ffeb42';
             } else if (clientStatus === 'Acceptée' || orderStatus === 'Acceptée') {
-                row.style.backgroundColor = '#e7e6e6';
+                newColor = '#e7e6e6';
+            }
+
+            // **THE FIX**: Only change the color if the new color is different from the current one.
+            // We use a custom data attribute to track the color we've set.
+            if (row.dataset.appliedColor !== newColor) {
+                row.style.backgroundColor = newColor;
+                row.dataset.appliedColor = newColor;
             }
         });
     }
@@ -199,39 +211,30 @@
 
     /**
      * ===================================================================
-     * INITIALIZATION & THE NEW, SAFER UPDATE LOOP
+     * INITIALIZATION & THE SAFER UPDATE LOOP
      * ===================================================================
      */
 
-    // This is the single function that runs all updates.
     function runAllUpdates() {
-        // *** THE MAIN FIX IS HERE ***
-        // 1. We disconnect the observer so it doesn't see its own changes.
         if (observer) {
             observer.disconnect();
         }
 
-        // 2. We run all our functions that change the page.
         highlightRows();
         detectAndHighlightDuplicates();
         createPlanifieResultsForm();
 
-        // 3. We reconnect the observer to watch for new changes.
         if (observer) {
             observer.observe(document.body, { childList: true, subtree: true });
         }
     }
 
     function initialize() {
-        // Create a "debounced" version of our update function.
-        // This stops the script from freezing when many changes happen at once.
-        const debouncedRunAllUpdates = debounce(runAllUpdates, 400); // 400ms delay
+        const debouncedRunAllUpdates = debounce(runAllUpdates, 400);
 
-        // The observer will now call the safer, debounced function.
         observer = new MutationObserver(debouncedRunAllUpdates);
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // Run once on load to get the initial state.
         runAllUpdates();
 
         document.addEventListener('visibilitychange', () => {
