@@ -3,52 +3,52 @@
 
     let observer;
 
+    // A helper function to prevent the script from running too many times too quickly.
+    function debounce(func, delay) {
+        let timeoutId;
+        return function(...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                func.apply(this, args);
+            }, delay);
+        };
+    }
+
     /**
      * ===================================================================
-     * YOUR ORIGINAL CODE FOR THE "PLANIFIÉE" TABLE (UNCHANGED)
+     * YOUR ORIGINAL CODE FOR THE "PLANIFIÉE" TABLE
      * ===================================================================
      */
 
-    // Function to count matching "Planifiée" rows
     function countMatchingRows() {
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
         if (!tbody) return 0;
-
         const rows = tbody.querySelectorAll('tr');
         return Array.from(rows).filter(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
-
             return (
-                (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-                    typeCell?.textContent.trim() === 'Planifiée') ||
-                (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-                    typeCell?.textContent.trim() === 'Planifiée')
+                (livreurStatusCell?.textContent.trim() === 'En recherche' && typeCell?.textContent.trim() === 'Planifiée') ||
+                (livreurStatusCell?.textContent.trim() === 'Acceptée' && typeCell?.textContent.trim() === 'Planifiée')
             );
         }).length;
     }
 
-    // Function to get "Planifiée" rows and format the results
     function getPlanifieResults() {
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
         const results = [];
         if (!tbody) return results;
-
         const rows = tbody.querySelectorAll('tr');
         rows.forEach(tr => {
             const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
             const typeCell = tr.querySelector('td.column-type span');
-
             if (
-                (livreurStatusCell?.textContent.trim() === 'En recherche' &&
-                    typeCell?.textContent.trim() === 'Planifiée') ||
-                (livreurStatusCell?.textContent.trim() === 'Acceptée' &&
-                    typeCell?.textContent.trim() === 'Planifiée')
+                (livreurStatusCell?.textContent.trim() === 'En recherche' && typeCell?.textContent.trim() === 'Planifiée') ||
+                (livreurStatusCell?.textContent.trim() === 'Acceptée' && typeCell?.textContent.trim() === 'Planifiée')
             ) {
                 const collectPointCell = tr.querySelector('td.column-collect_point\\.name span');
                 const orderIdCell = tr.querySelector('td.column-order_id span');
                 const orderDateCell = tr.querySelector('td.column-order_date span');
-
                 if (collectPointCell && orderIdCell && orderDateCell) {
                     results.push({
                         collectPoint: collectPointCell.textContent.trim(),
@@ -61,21 +61,16 @@
         return results;
     }
 
-    // Function to create a formatted table in a form
     function createPlanifieResultsForm() {
-        // Remove any existing form to avoid duplication
         const existingForm = document.getElementById('planifie-results-form');
         if (existingForm) {
             existingForm.remove();
         }
-
         const targetForm = document.querySelector('form.jss55.jss56');
         if (!targetForm) return;
-
         const nextSibling = targetForm.nextElementSibling;
         if (!nextSibling || nextSibling.tagName !== 'SPAN') return;
 
-        // Create a new form
         const newForm = document.createElement('form');
         newForm.id = 'planifie-results-form';
         newForm.className = 'MuiToolbar-root MuiToolbar-regular jss52 MuiToolbar-gutters';
@@ -86,13 +81,10 @@
         newForm.style.backgroundColor = 'rgb(249, 249, 249)';
         newForm.style.fontFamily = 'Arial, sans-serif';
         newForm.style.fontSize = '16px';
-
         targetForm.parentNode.insertBefore(newForm, nextSibling);
 
-        // Add the count
         const count = countMatchingRows();
         const results = getPlanifieResults();
-
         const countDiv = document.createElement('div');
         countDiv.style.marginTop = '15px';
         countDiv.style.fontSize = '1.5em';
@@ -100,14 +92,11 @@
         countDiv.innerHTML = `<span>Planifie: </span><span style="color: rgb(0, 123, 255);">${count}</span>`;
         newForm.appendChild(countDiv);
 
-        // Create a table for results
         if (results.length > 0) {
             const table = document.createElement('table');
             table.style.width = '100%';
             table.style.borderCollapse = 'collapse';
             table.style.marginTop = '10px';
-
-            // Table Header
             const headerRow = document.createElement('tr');
             ['Collect Point', 'Order ID', 'Date Commande'].forEach(headerText => {
                 const th = document.createElement('th');
@@ -119,8 +108,6 @@
                 headerRow.appendChild(th);
             });
             table.appendChild(headerRow);
-
-            // Table Body
             results.forEach(row => {
                 const tr = document.createElement('tr');
                 Object.values(row).forEach(text => {
@@ -132,7 +119,6 @@
                 });
                 table.appendChild(tr);
             });
-
             newForm.appendChild(table);
         } else {
             const noDataDiv = document.createElement('div');
@@ -146,20 +132,17 @@
 
     /**
      * ===================================================================
-     * OTHER CORE FUNCTIONS (HIGHLIGHTING, DUPLICATES)
+     * OTHER CORE FUNCTIONS
      * ===================================================================
      */
 
     function highlightRows() {
-        const rows = document.querySelectorAll(
-            'tr[resource="orders"], tr[resource="partnerOrders"], tr[resource="supermarket-orders"]'
-        );
+        const rows = document.querySelectorAll('tr[resource="orders"], tr[resource="partnerOrders"], tr[resource="supermarket-orders"]');
         rows.forEach(row => {
             const clientStatus = row.querySelector('td.column-client_status span')?.textContent.trim();
             const orderStatus = row.querySelector('td.column-status span')?.textContent.trim();
             const typeStatus = row.querySelector('td.column-type span')?.textContent.trim();
-            row.style.backgroundColor = ''; // Reset color first
-
+            row.style.backgroundColor = '';
             if (typeStatus === 'Planifiée') {
                 row.style.backgroundColor = '#fc93d0';
             } else if (clientStatus === 'Annulée' || orderStatus === 'Annulée' || clientStatus === 'Expirée' || orderStatus === 'Expirée') {
@@ -177,7 +160,6 @@
     }
 
     function detectAndHighlightDuplicates() {
-        if (observer) observer.disconnect();
         const tdElements = document.querySelectorAll('td.column-order_id span, td.column-code span');
         const values = Array.from(tdElements).map(span => ({ value: span.textContent.trim(), td: span.closest('td') }));
         const valueCounts = {};
@@ -197,10 +179,10 @@
                 tds.forEach(td => cleanEmoji(td));
             }
         });
-        if (observer) observer.observe(document.body, { childList: true, subtree: true });
     }
 
     function addEmoji(td, emoji, className) {
+        if (!td || !td.querySelector) return;
         if (!td.querySelector(`.${className}`)) {
             const emojiSpan = document.createElement('span');
             emojiSpan.textContent = emoji;
@@ -210,27 +192,48 @@
     }
 
     function cleanEmoji(td) {
+        if (!td || !td.querySelectorAll) return;
         td.querySelectorAll('.duplicate-emoji-red, .duplicate-emoji-green').forEach(emoji => emoji.remove());
     }
 
 
     /**
      * ===================================================================
-     * INITIALIZATION & MAIN UPDATE LOOP
+     * INITIALIZATION & THE NEW, SAFER UPDATE LOOP
      * ===================================================================
      */
 
     // This is the single function that runs all updates.
     function runAllUpdates() {
+        // *** THE MAIN FIX IS HERE ***
+        // 1. We disconnect the observer so it doesn't see its own changes.
+        if (observer) {
+            observer.disconnect();
+        }
+
+        // 2. We run all our functions that change the page.
         highlightRows();
         detectAndHighlightDuplicates();
-        createPlanifieResultsForm(); // Your function is called here
+        createPlanifieResultsForm();
+
+        // 3. We reconnect the observer to watch for new changes.
+        if (observer) {
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
     }
 
     function initialize() {
-        observer = new MutationObserver(runAllUpdates);
+        // Create a "debounced" version of our update function.
+        // This stops the script from freezing when many changes happen at once.
+        const debouncedRunAllUpdates = debounce(runAllUpdates, 400); // 400ms delay
+
+        // The observer will now call the safer, debounced function.
+        observer = new MutationObserver(debouncedRunAllUpdates);
         observer.observe(document.body, { childList: true, subtree: true });
-        runAllUpdates(); // Run once on load
+
+        // Run once on load to get the initial state.
+        runAllUpdates();
+
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 runAllUpdates();
