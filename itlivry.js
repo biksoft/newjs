@@ -14,6 +14,7 @@
         if (!targetForm) {
             return;
         }
+
         if (document.getElementById('planifie-results-form')) {
             return;
         }
@@ -35,8 +36,7 @@
     // --- All Helper Functions Below ---
 
     /**
-     * ✅ UPDATED: This function contains the corrected coloring logic.
-     * It now correctly handles colors for "Planifiée" orders based on their status.
+     * Applies color styles to rows based on their type and status.
      */
     function applyAllRowStyles() {
         const rows = document.querySelectorAll(
@@ -45,29 +45,24 @@
         rows.forEach(row => {
             row.style.backgroundColor = ''; // Reset background first
 
-            // Get all status and type values from the row
             const typeCellSpan = row.querySelector('td.column-type span');
             const type = typeCellSpan?.textContent.trim();
             const clientStatus = row.querySelector('td.column-client_status span')?.textContent.trim();
             const orderStatus = row.querySelector('td.column-status span')?.textContent.trim();
 
-            // First, check if the order type is "Planifiée"
             if (type === 'Planifiée') {
-                // --- Apply your specific color rules for "Planifiée" orders ---
-                if (clientStatus === 'Acceptée' && orderStatus === 'En recherche') {
-                    row.style.backgroundColor = '#fc93d0'; // Pink
+                 if (clientStatus === 'Acceptée' && orderStatus === 'En recherche') {
+                    row.style.backgroundColor = '#fc93d0';
                 } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée') {
-                    row.style.backgroundColor = '#5b9bd5'; // Blue
+                    row.style.backgroundColor = '#5b9bd5';
                 } else if (clientStatus === 'Déposée' || orderStatus === 'Déposée') {
-                    row.style.backgroundColor = '#42ff79'; // Green
+                    row.style.backgroundColor = '#42ff79';
                 } else if (clientStatus === 'Expirée' || orderStatus === 'Expirée') {
-                    row.style.backgroundColor = '#ff4242'; // Red
+                    row.style.backgroundColor = '#ff4242';
                 } else {
-                    // Default color for any other "Planifiée" status
-                    row.style.backgroundColor = '#fc93d0'; // Default Pink
+                    row.style.backgroundColor = '#fc93d0';
                 }
             } else {
-                // --- Rules for all NON-"Planifiée" orders ---
                 if (clientStatus === 'Déposée' || orderStatus === 'Déposée') {
                     row.style.backgroundColor = '#42ff79';
                 } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée' || clientStatus === 'Livreur en route' || clientStatus === 'Prête') {
@@ -81,6 +76,9 @@
         });
     }
 
+    /**
+     * Finds and marks duplicate order IDs with emojis.
+     */
     function detectAndHighlightDuplicates() {
         if (observer) observer.disconnect();
         const tdElements = document.querySelectorAll('td.column-order_id span, td.column-code span');
@@ -92,7 +90,7 @@
         });
         Object.keys(valueCounts).forEach(value => {
             const { tds } = valueCounts[value];
-            tds.forEach(td => cleanEmoji(td)); // Clean first
+            tds.forEach(td => cleanEmoji(td));
             if (tds.length > 1) {
                 tds.forEach((td, index) => {
                     const isLast = index === tds.length - 1;
@@ -117,42 +115,45 @@
         existingEmojis.forEach(emoji => emoji.remove());
     }
 
-    function countMatchingPlanifie() {
+    /**
+     * ✅ UPDATED: Efficiently scans the table ONCE to get all "Planifiée" data.
+     * @returns {{results: Array, count: number}} An object with the results array and the count.
+     */
+    function getPlanifieData() {
         const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
-        if (!tbody) return 0;
-        const rows = tbody.querySelectorAll('tr');
-        return Array.from(rows).filter(tr => {
-            const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
-            const typeCell = tr.querySelector('td.column-type span');
-            return typeCell?.textContent.trim() === 'Planifiée' &&
-                   (livreurStatusCell?.textContent.trim() === 'En recherche' || livreurStatusCell?.textContent.trim() === 'Acceptée');
-        }).length;
-    }
+        const planifieOrders = [];
 
-    function getPlanifieResults() {
-        const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body.jss80');
-        const results = [];
-        if (!tbody) return results;
-        const rows = tbody.querySelectorAll('tr');
-        rows.forEach(tr => {
-            const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
-            const typeCell = tr.querySelector('td.column-type span');
-            if (typeCell?.textContent.trim() === 'Planifiée' && (livreurStatusCell?.textContent.trim() === 'En recherche' || livreurStatusCell?.textContent.trim() === 'Acceptée')) {
-                const collectPointCell = tr.querySelector('td.column-collect_point\\.name span');
-                const orderIdCell = tr.querySelector('td.column-order_id span');
-                const orderDateCell = tr.querySelector('td.column-order_date span');
-                if (collectPointCell && orderIdCell && orderDateCell) {
-                    results.push({
-                        collectPoint: collectPointCell.textContent.trim(),
-                        orderId: orderIdCell.textContent.trim(),
-                        orderDate: orderDateCell.textContent.trim(),
-                    });
+        if (tbody) {
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach(tr => {
+                const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
+                const typeCell = tr.querySelector('td.column-type span');
+
+                if (typeCell?.textContent.trim() === 'Planifiée' && (livreurStatusCell?.textContent.trim() === 'En recherche' || livreurStatusCell?.textContent.trim() === 'Acceptée')) {
+                    const collectPointCell = tr.querySelector('td.column-collect_point\\.name span');
+                    const orderIdCell = tr.querySelector('td.column-order_id span');
+                    const orderDateCell = tr.querySelector('td.column-order_date span');
+
+                    if (collectPointCell && orderIdCell && orderDateCell) {
+                        planifieOrders.push({
+                            collectPoint: collectPointCell.textContent.trim(),
+                            orderId: orderIdCell.textContent.trim(),
+                            orderDate: orderDateCell.textContent.trim(),
+                        });
+                    }
                 }
-            }
-        });
-        return results;
+            });
+        }
+
+        return {
+            results: planifieOrders,
+            count: planifieOrders.length,
+        };
     }
 
+    /**
+     * Creates or updates the custom form with the "Planifiée" order details.
+     */
     function createOrUpdatePlanifieForm() {
         const existingInfoForm = document.getElementById('planifie-results-form');
         if (existingInfoForm) existingInfoForm.remove();
@@ -165,8 +166,11 @@
         newForm.id = 'planifie-results-form';
         Object.assign(newForm.style, { border: '2px dashed #007bff', padding: '20px', margin: '10px', borderRadius: '8px', backgroundColor: '#f9f9f9', fontFamily: 'Arial, sans-serif' });
 
-        const count = countMatchingPlanifie();
-        const results = getPlanifieResults();
+        // ✅ UPDATED: Calls the new single, efficient function
+        const planifieData = getPlanifieData();
+        const count = planifieData.count;
+        const results = planifieData.results;
+
         const countDiv = document.createElement('div');
         countDiv.style.cssText = 'margin-bottom: 15px; font-size: 1.5em; font-weight: 600;';
         countDiv.innerHTML = `<span>Planifie: </span><span style="color: #007bff;">${count}</span>`;
@@ -200,10 +204,12 @@
         targetForm.parentNode.insertBefore(newForm, nextSibling);
     }
 
+    /**
+     * Initializes the observer to watch for page changes.
+     */
     function initializeObserver() {
-        if (observer) observer.disconnect(); // Disconnect any old observer
+        if (observer) observer.disconnect();
         observer = new MutationObserver(() => {
-            // When the table content changes, re-apply all styles and highlights
             applyAllRowStyles();
             detectAndHighlightDuplicates();
         });
