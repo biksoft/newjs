@@ -110,7 +110,7 @@ async function runApiSearch(phoneNumber) {
         if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
         const data = await response.json();
-        let displayText = 'User Not Found';
+        let displayText = 'Resto PLUS (+)';
 
         if (data.value && data.value.length > 0) {
             const accounts = data.value;
