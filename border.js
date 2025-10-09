@@ -1,5 +1,6 @@
 'use strict';
-
+    if (window.livryToolsLoaded) return;
+    window.livryToolsLoaded = true;
 // IDs for the elements
 const CONTAINER_ID = 'livry-tools-container';
 const RESULT_ELEMENT_ID = 'persistent-orders-count-result';
