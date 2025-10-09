@@ -1,6 +1,7 @@
 'use strict';
 
 // IDs for the elements
+const CONTAINER_ID = 'livry-tools-container';
 const RESULT_ELEMENT_ID = 'persistent-orders-count-result';
 const COPY_BUTTON_ID = 'copy-confirmation-message-button';
 
@@ -165,14 +166,3 @@ function mainCheck() {
 // Start the main check on a 1-second interval.
 setInterval(mainCheck, 1000);
 console.log("✅ Livry Tools (Required Script) is running. Watching for changes...");
-
-// Add these two lines at the very top of your border.js file
-if (window.livryToolsLoaded) return; // If script has already run, stop immediately.
-window.livryToolsLoaded = true;   // Otherwise, mark the script as loaded for the first time.
-
-// Your existing code starts below
-'use strict';
-
-// IDs for the elements
-const CONTAINER_ID = 'livry-tools-container';
-// ... rest of your code
