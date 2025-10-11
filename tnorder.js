@@ -11,47 +11,47 @@ const COLOR_HOVER = '#66BB6A';
 const COLOR_COPIED = '#00796B'; // Darker green confirmation
 
 /**
- * Creates the UI components the first time it's called and appends them to the DOM.
- * On subsequent calls, it simply returns the existing container element.
- * This function ensures the UI is only built ONCE.
- * @returns {HTMLElement | null} The main container element or null if the anchor isn't found.
+ * Creates the UI components ONCE and appends them directly to the document body.
+ * This makes the UI independent of any other page elements.
+ * @returns {HTMLElement} The main container element.
  */
 function initializeUI() {
-    // If the UI already exists, do nothing and return it.
+    // If the UI already exists, just return it.
     const existingContainer = document.getElementById(CONTAINER_ID);
     if (existingContainer) {
         return existingContainer;
     }
 
-    // Find the anchor element to insert our UI next to.
-    const statutsHeader = Array.from(document.querySelectorAll('h6')).find(h => h.textContent.trim() === 'Statuts');
-    if (!statutsHeader) {
-        console.error("Could not find the 'Statuts' header to anchor the UI.");
-        return null; // Can't build the UI if the anchor isn't there.
-    }
+    // --- CREATE THE UI ELEMENTS (this block only runs once) ---
 
-    // --- CREATE THE UI ELEMENTS (only runs once) ---
-
-    // 1. Create the main container
+    // 1. Create the main container. It's now a fixed, floating element.
     const container = document.createElement('div');
     container.id = CONTAINER_ID;
     container.style.cssText = `
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        z-index: 9999 !important; /* Ensures it stays on top of everything */
+        background-color: #ffffff !important;
+        padding: 15px !important;
+        border-radius: 12px !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
         display: flex !important; 
         align-items: center !important; 
         gap: 15px !important; 
-        margin: 10px 0 !important;
-        visibility: hidden; /* Start hidden by default */
-        transition: visibility 0.1s;
+        visibility: hidden; /* Start hidden */
+        opacity: 0; /* Start transparent for fade effect */
+        transition: visibility 0s, opacity 0.3s ease-in-out !important;
     `;
 
-    // 2. Create the order count text element
+    // 2. Create the order count text element.
     const resultElement = document.createElement('p');
     resultElement.id = RESULT_ELEMENT_ID;
-    resultElement.textContent = 'Loading...'; // Initial text
-    resultElement.style.cssText = 'color: red !important; font-weight: bold !important; font-size: 1.1rem !important; margin: 0 !important;';
+    resultElement.textContent = 'Loading...';
+    resultElement.style.cssText = 'color: red !important; font-weight: bold !important; font-size: 1.1rem !important; margin: 0 !important; white-space: nowrap;';
     container.appendChild(resultElement);
 
-    // 3. Create the copy button
+    // 3. Create the copy button.
     const copyButton = document.createElement('button');
     copyButton.id = COPY_BUTTON_ID;
     copyButton.textContent = 'Copy Confirmation Message';
@@ -70,9 +70,10 @@ function initializeUI() {
         -webkit-appearance: none !important;
         -moz-appearance: none !important;
         appearance: none !important;
+        white-space: nowrap;
     `;
 
-    // Add hover effects
+    // Add button events
     copyButton.addEventListener('mouseenter', () => {
         if (!copyButton.textContent.includes('Copied!')) {
             copyButton.style.backgroundColor = COLOR_HOVER;
@@ -81,17 +82,11 @@ function initializeUI() {
     copyButton.addEventListener('mouseleave', () => {
         copyButton.style.backgroundColor = copyButton.textContent.includes('Copied!') ? COLOR_COPIED : COLOR_DEFAULT;
     });
-
-    // Add click logic
     copyButton.addEventListener('click', () => {
         const phoneInput = document.getElementById('phone');
         const codeInput = document.getElementById('code');
-
         if (phoneInput && codeInput) {
-            const phoneNumber = phoneInput.value;
-            const orderCode = codeInput.value;
-            const finalMessage = `${orderCode} votre confirmation svp nouveau client ${phoneNumber}`;
-
+            const finalMessage = `${codeInput.value} votre confirmation svp nouveau client ${phoneInput.value}`;
             navigator.clipboard.writeText(finalMessage).then(() => {
                 copyButton.style.backgroundColor = COLOR_COPIED;
                 copyButton.textContent = 'Copied! ✅';
@@ -101,25 +96,25 @@ function initializeUI() {
                 }, 2000);
             }).catch(err => console.error('Failed to copy message: ', err));
         } else {
-            console.error("Could not find the required input fields with IDs 'phone' and 'code'.");
+            console.error("Could not find input fields 'phone' and 'code'.");
         }
     });
     container.appendChild(copyButton);
 
-    // 4. Insert the complete UI into the page.
-    statutsHeader.insertAdjacentElement('afterend', container);
+    // 4. Append the UI directly to the body.
+    document.body.appendChild(container);
 
     return container;
 }
 
 
 /**
- * Updates the text content and visibility of the UI.
- * @param {string} countText - The text to display in the result element.
- * @param {boolean} shouldBeVisible - Whether the UI should be visible or not.
+ * Updates the text and visibility of the UI with a fade effect.
+ * @param {string} countText - The text to display.
+ * @param {boolean} shouldBeVisible - If the UI should be visible.
  */
 function updateUI(countText, shouldBeVisible) {
-    const container = initializeUI(); // This will create the UI if it doesn't exist, or just get it if it does.
+    const container = initializeUI(); // Ensures UI is created if it doesn't exist.
     if (!container) return;
 
     if (shouldBeVisible) {
@@ -127,9 +122,11 @@ function updateUI(countText, shouldBeVisible) {
         if (resultElement) {
             resultElement.textContent = countText;
         }
-        container.style.visibility = 'visible'; // Make it visible
+        container.style.visibility = 'visible';
+        container.style.opacity = '1';
     } else {
-        container.style.visibility = 'hidden'; // Hide it but keep its space
+        container.style.opacity = '0';
+        container.style.visibility = 'hidden';
     }
 }
 
@@ -138,22 +135,20 @@ function updateUI(countText, shouldBeVisible) {
  * Performs an API search and updates the UI with the result.
  */
 async function runApiSearch(phoneNumber) {
-    console.log(`NEW PHONE NUMBER DETECTED: Running API search for ${phoneNumber}...`);
+    console.log(`NEW PHONE NUMBER: Running API search for ${phoneNumber}...`);
     try {
         const url = `https://livry.flexi-apps.com/api/v1/admin/users?%24filter=%7B%22q%22%3A%22${phoneNumber}%22%7D&%24skip=0&%24sort=%7B%22created_at%22%3A%22-1%22%7D&%24top=10&range=%5B0%2C9%5D`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
         const data = await response.json();
-        let displayText = 'Resto PLUS (+)'; // Default text for new clients
+        let displayText = 'Resto PLUS (+)'; // Default for new clients
 
         if (data.value && data.value.length > 0) {
             const accounts = data.value;
-            const accountCount = accounts.length;
             const totalOrders = accounts.reduce((sum, user) => sum + user.ordersCount, 0);
-
-            displayText = accountCount > 1 ?
-                `Total Orders: ${totalOrders} (from ${accountCount} accounts)` :
+            displayText = accounts.length > 1 ?
+                `Total Orders: ${totalOrders} (from ${accounts.length} accounts)` :
                 `Orders Count: ${totalOrders}`;
         }
 
@@ -161,30 +156,29 @@ async function runApiSearch(phoneNumber) {
         localStorage.setItem('savedPhoneNumber', phoneNumber);
         console.log(`Result saved for ${phoneNumber}: "${displayText}"`);
 
-        updateUI(displayText, true); // Show and update the UI with the new text
+        updateUI(displayText, true); // Show and update the UI
 
     } catch (error) {
         console.error("API Search Error:", error);
-        updateUI('API Error', true); // Show an error in the UI
+        updateUI('API Error', true); // Show an error
     }
 }
 
 /**
- * The main function that checks for phone input and decides whether to update the UI.
- * This runs on a timer.
+ * Main check function that runs on a timer.
  */
 function mainCheck() {
     const phoneInput = document.getElementById('phone');
 
-    // If the phone input doesn't exist on the page, hide the UI.
+    // If the phone input doesn't exist on the page, hide our UI.
     if (!phoneInput) {
-        updateUI('', false); // Pass false to hide the UI.
+        updateUI('', false);
         return;
     }
 
     const currentPhoneNumber = phoneInput.value;
     
-    // If the phone input is empty, hide the UI but don't clear storage.
+    // If the phone input is empty, hide the UI.
     if (!currentPhoneNumber) {
          updateUI('', false);
          return;
@@ -193,21 +187,21 @@ function mainCheck() {
     const savedPhone = localStorage.getItem('savedPhoneNumber');
     const savedText = localStorage.getItem('savedDisplayText');
 
-    // If the phone number is the same one we've already checked, just show the saved result.
+    // If number is the same as last time, just show the saved result.
     if (currentPhoneNumber === savedPhone && savedText) {
-        updateUI(savedText, true); // Pass true to show the UI.
+        updateUI(savedText, true);
     } else {
-        // Otherwise, run a new API search for the new number.
+        // Otherwise, run a new API search.
         runApiSearch(currentPhoneNumber);
     }
 }
 
 // --- EXECUTION ---
 
-// 1. Run the check immediately on script load to show the UI instantly.
+// 1. Run the check immediately on script load for instant UI.
 mainCheck(); 
 
-// 2. Then, set it to run on a 1-second interval to watch for changes.
+// 2. Set it to run every second to watch for changes.
 setInterval(mainCheck, 1000);
 
-console.log("✅ Livry Tools (Required Script) is running. Watching for changes...");
+console.log("✅ Livry Tools (Independent UI) is running...");
