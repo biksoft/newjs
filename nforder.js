@@ -7,8 +7,8 @@ const SET_ONLINE_BUTTON_ID = 'set-livreur-online-button';
 const COPY_EMAIL_BUTTON_ID = 'copy-order-email-button';
 const COPY_PHONE_BUTTON_ID = 'copy-order-phone-button';
 const OPEN_MAPS_BUTTON_ID = 'open-order-maps-button';
-const ACTIONS_PANEL_ID = 'livry-actions-panel'; // The full panel
-const MENU_TOGGLE_ID = 'livry-menu-toggle'; // The floating gear icon
+const COLLAPSIBLE_CONTENT_ID = 'livry-collapsible-content';
+const TOGGLE_BUTTON_ID = 'livry-toggle-button';
 
 const PRIMARY_RIDER_ID_SELECTOR = 'input[name="livreur"]';
 const SECONDARY_RIDER_ID_SELECTOR = 'input[name="livreur._id"]';
@@ -24,32 +24,19 @@ let orderData = null;
 function initializeUI() {
     if (document.getElementById(CONTAINER_ID)) return;
 
-    // Inject CSS for the new floating icon and popup panel
+    // Inject CSS for the collapsible panel
     const styles = `
-        #${CONTAINER_ID} {
-            position: fixed !important; top: 20px !important; right: 20px !important;
-            z-index: 9999 !important;
-            visibility: hidden; opacity: 0;
-            transition: visibility 0s, opacity 0.3s ease-in-out !important;
+        #${COLLAPSIBLE_CONTENT_ID} {
+            max-height: 500px; /* A large enough value */
+            overflow: hidden;
+            transition: max-height 0.4s ease-out, padding 0.4s ease, opacity 0.3s ease-in;
+            opacity: 1;
         }
-        #${MENU_TOGGLE_ID} {
-            width: 50px; height: 50px; background-color: #4CAF50; color: white;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 24px; border: none; cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        #${ACTIONS_PANEL_ID} {
-            position: absolute; bottom: calc(100% + 10px); right: 0; /* Position above the icon */
-            background-color: #ffffff; border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            width: 280px; /* Give it a fixed width */
-            opacity: 0; transform: translateY(10px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-            pointer-events: none; /* Cant be clicked when hidden */
-        }
-        #${CONTAINER_ID}.is-open #${ACTIONS_PANEL_ID} {
-            opacity: 1; transform: translateY(0);
-            pointer-events: auto;
+        #${CONTAINER_ID}.is-collapsed #${COLLAPSIBLE_CONTENT_ID} {
+            max-height: 0;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            opacity: 0;
         }
     `;
     const styleSheet = document.createElement("style");
@@ -57,41 +44,46 @@ function initializeUI() {
     document.head.appendChild(styleSheet);
 
 
-    // --- Main Container (now just a wrapper for the icon and panel) ---
+    // --- Main Container (Fixed Position) ---
     const container = document.createElement('div');
     container.id = CONTAINER_ID;
+    container.style.cssText = `
+        position: fixed !important; top: 20px !important; right: 20px !important;
+        z-index: 9999 !important; background-color: #ffffff !important;
+        border-radius: 12px !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important; display: flex !important;
+        flex-direction: column !important;
+        visibility: hidden; opacity: 0;
+        transition: visibility 0s, opacity 0.3s ease-in-out !important;
+    `;
 
-    // --- Floating Icon (the gear) ---
-    const menuToggle = document.createElement('button');
-    menuToggle.id = MENU_TOGGLE_ID;
-    menuToggle.textContent = '⚙️';
-    menuToggle.addEventListener('click', () => {
-        container.classList.toggle('is-open');
-    });
-    container.appendChild(menuToggle);
-
-    // --- The Full Panel (appears on click) ---
-    const actionsPanel = document.createElement('div');
-    actionsPanel.id = ACTIONS_PANEL_ID;
-
-    // Header with Title and Close Button
+    // --- Header with Title and Toggle Button ---
     const header = document.createElement('div');
     header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 15px; border-bottom: 1px solid #eee;';
-    const title = document.createElement('span');
-    title.textContent = 'Livry Tools';
-    title.style.fontWeight = 'bold';
-    const closeButton = document.createElement('button');
-    closeButton.textContent = '➖';
-    closeButton.style.cssText = 'background: #eee; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 16px; line-height: 24px;';
-    closeButton.addEventListener('click', () => container.classList.remove('is-open')); // Specifically closes
-    header.appendChild(title);
-    header.appendChild(closeButton);
-    actionsPanel.appendChild(header);
 
-    // Content Area (buttons, etc.)
+    const title = document.createElement('span');
+    title.textContent = 'boujara Tools'; // <-- NAME UPDATED HERE
+    title.style.fontWeight = 'bold';
+
+    const toggleButton = document.createElement('button');
+    toggleButton.id = TOGGLE_BUTTON_ID;
+    toggleButton.textContent = '➖';
+    toggleButton.style.cssText = 'background: #eee; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 16px; line-height: 24px; text-align: center; padding: 0;';
+    toggleButton.addEventListener('click', () => {
+        const isCollapsed = container.classList.toggle('is-collapsed');
+        toggleButton.textContent = isCollapsed ? '➕' : '➖';
+    });
+
+    header.appendChild(title);
+    header.appendChild(toggleButton);
+    container.appendChild(header);
+
+
+    // --- Collapsible Content Area ---
     const content = document.createElement('div');
+    content.id = COLLAPSIBLE_CONTENT_ID;
     content.style.cssText = 'display: flex; flex-direction: column; gap: 12px; padding: 15px; align-items: flex-start;';
-    
+
     const resultElement = document.createElement('p');
     resultElement.id = RESULT_ELEMENT_ID;
     resultElement.style.cssText = 'color: red !important; font-weight: bold !important; font-size: 1.1rem !important; margin: 0 0 5px 0 !important; white-space: nowrap; width: 100%; display: none;';
@@ -123,8 +115,7 @@ function initializeUI() {
     });
 
     content.appendChild(buttonGroup);
-    actionsPanel.appendChild(content);
-    container.appendChild(actionsPanel);
+    container.appendChild(content);
     document.body.appendChild(container);
 }
 
@@ -145,4 +136,4 @@ updateContextualButtonsVisibility();
 mainPhoneCheck();
 setInterval(mainPhoneCheck, 1000);
 
-console.log("✅ Livry Super Toolkit (Mobile Friendly FAB) is running...");
+console.log("✅ boujara Tools (Fixed & Collapsible) is running...");
