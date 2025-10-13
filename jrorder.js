@@ -18,7 +18,7 @@ let orderData = null; // Cache for the fetched order details
 
 /**
  * Extracts the Order ID from the current URL hash.
- * @returns {string|null}
+ * @returns {string|null} The Order ID or null if not found.
  */
 function extractOrderId() {
     const linkElement = document.querySelector(ORDER_ID_SOURCE_SELECTOR);
@@ -31,7 +31,7 @@ function extractOrderId() {
 
 /**
  * Extracts the Livreur (Rider) ID from the page.
- * @returns {string|null}
+ * @returns {string|null} The Livreur ID or null if not found.
  */
 function extractLivreurId() {
     const primaryInput = document.querySelector(PRIMARY_RIDER_ID_SELECTOR);
@@ -47,7 +47,7 @@ function extractLivreurId() {
 
 /**
  * Fetches data for a specific order and caches it.
- * @param {string} orderId
+ * @param {string} orderId - The ID of the order to fetch.
  */
 async function fetchOrderData(orderId) {
     console.log(`Fetching data for Order ID: ${orderId}...`);
@@ -59,25 +59,30 @@ async function fetchOrderData(orderId) {
 
         const restaurantInfo = data.restaurantInfo || {};
         const coordinates = data.clientLocation?.coordinates || restaurantInfo.location?.coordinates;
-        if (!coordinates) throw new Error("Coordinates not found in order data.");
+        
+        if (!coordinates) {
+             throw new Error("Coordinates not found in order data.");
+        }
 
+        // Cache the formatted data globally
         orderData = {
             email: restaurantInfo.email || "N/A",
             phone: restaurantInfo.phoneNumber || restaurantInfo.phone || "N/A",
-            mapsLink: `https://www.google.com/maps/search/?api=1&query=$${coordinates[1]},${coordinates[0]}`
+            mapsLink: `https://www.google.com/maps/search/?api=1&query=${coordinates[1]},${coordinates[0]}`
         };
         console.log(`✅ Data fetched for order ${orderId}.`);
-        updateContextualButtonsVisibility(); // Update buttons now that data is ready
+        updateOrderButtons(); // Update buttons with new data
 
     } catch (error) {
         console.error("❌ Error fetching order data:", error);
-        orderData = null;
-        updateContextualButtonsVisibility();
+        orderData = null; // Clear cache on error
+        updateOrderButtons();
     }
 }
 
+
 /**
- * Creates the entire UI toolkit ONCE.
+ * Creates the entire UI toolkit ONCE and appends it to the document body.
  */
 function initializeUI() {
     if (document.getElementById(CONTAINER_ID)) return;
@@ -96,21 +101,24 @@ function initializeUI() {
 
     const resultElement = document.createElement('p');
     resultElement.id = RESULT_ELEMENT_ID;
-    resultElement.style.cssText = 'color: red !important; font-weight: bold !important; font-size: 1.1rem !important; margin: 0 0 5px 0 !important; white-space: nowrap; border-bottom: 1px solid #eee; padding-bottom: 10px; width: 100%; display: none;';
+    resultElement.style.cssText = 'color: red !important; font-weight: bold !important; font-size: 1.1rem !important; margin: 0 0 5px 0 !important; white-space: nowrap; border-bottom: 1px solid #eee; padding-bottom: 10px; width: 100%;';
     container.appendChild(resultElement);
 
     const buttonGroup = document.createElement('div');
     buttonGroup.style.cssText = 'display: flex !important; gap: 10px !important; flex-wrap: wrap !important;';
 
+    // --- Button Definitions ---
     const buttons = [
+        // Order-Context Buttons (initially hidden)
         { id: OPEN_MAPS_BUTTON_ID, text: '🗺️ Maps', color: '#4299e1', hidden: true, onClick: () => window.open(orderData.mapsLink, '_blank') },
-        { id: COPY_EMAIL_BUTTON_ID, text: '📧 Copy Email', color: '#38a169', hidden: true, onClick: (btn) => copyToClipboard(btn, orderData.email, '📧 Copy Email') },
-        { id: COPY_PHONE_BUTTON_ID, text: '📞 Copy Phone', color: '#f6ad55', hidden: true, onClick: (btn) => copyToClipboard(btn, orderData.phone, '📞 Copy Phone') },
-        { id: SET_ONLINE_BUTTON_ID, text: '🟢 Set Online', color: '#4CAF50', hidden: true, onClick: handleSetOnline },
+        { id: COPY_EMAIL_BUTTON_ID, text: '📧 Copy Email', color: '#38a169', hidden: true, onClick: (btn) => copyToClipboard(btn, orderData.email) },
+        { id: COPY_PHONE_BUTTON_ID, text: '📞 Copy Phone', color: '#f6ad55', hidden: true, onClick: (btn) => copyToClipboard(btn, orderData.phone) },
+        // Always-Visible Buttons
+        { id: SET_ONLINE_BUTTON_ID, text: '🟢 Set Online', color: '#4CAF50', hidden: true, onClick: handleSetOnline }, // Also context-aware
         { id: 'copy-new-client-button', text: 'New Client Msg', color: '#4CAF50', hidden: false, onClick: (btn) => {
             const phone = document.getElementById('phone')?.value || '';
             const code = document.getElementById('code')?.value || '';
-            copyToClipboard(btn, `${code} votre confirmation svp nouveau client ${phone}`, 'New Client Msg');
+            copyToClipboard(btn, `${code} votre confirmation svp nouveau client ${phone}`);
         }},
     ];
 
@@ -119,7 +127,13 @@ function initializeUI() {
         button.id = config.id;
         button.textContent = config.text;
         button.type = 'button';
-        button.style.cssText = `background-color: ${config.color} !important; color: white !important; padding: 8px 15px !important; border: none !important; border-radius: 8px !important; cursor: pointer !important; font-weight: 500 !important; font-size: 0.9rem !important; transition: background-color 0.3s ease !important; display: ${config.hidden ? 'none' : 'inline-block'};`;
+        button.style.cssText = `
+            background-color: ${config.color} !important; color: white !important;
+            padding: 8px 15px !important; border: none !important; border-radius: 8px !important;
+            cursor: pointer !important; font-weight: 500 !important; font-size: 0.9rem !important;
+            transition: background-color 0.3s ease !important;
+            display: ${config.hidden ? 'none' : 'inline-block'};
+        `;
         button.addEventListener('click', () => config.onClick(button));
         buttonGroup.appendChild(button);
     });
@@ -128,24 +142,36 @@ function initializeUI() {
     document.body.appendChild(container);
 }
 
-async function copyToClipboard(button, text, originalText) {
+/**
+ * Generic function to copy text to the clipboard and provide button feedback.
+ * @param {HTMLElement} button The button that was clicked.
+ * @param {string} text The text to copy.
+ */
+async function copyToClipboard(button, text) {
     if (!text || text === "N/A") {
         button.textContent = '❌ N/A';
-        setTimeout(() => button.textContent = originalText, 2000);
+        setTimeout(() => button.textContent = button.id.includes('Email') ? '📧 Copy Email' : '📞 Copy Phone', 2000);
         return;
     }
+    const originalText = button.textContent;
     try {
         await navigator.clipboard.writeText(text);
         button.textContent = '✅ Copied!';
     } catch (err) {
+        console.error('Failed to copy:', err);
         button.textContent = '❌ Failed!';
     }
     setTimeout(() => button.textContent = originalText, 2000);
 }
 
+/**
+ * Executes the API call to set the rider's status to "online".
+ * @param {HTMLElement} button The button that was clicked.
+ */
 async function handleSetOnline(button) {
     const livreurId = extractLivreurId();
     if (!livreurId) return alert('Cannot find Rider ID.');
+    
     const originalText = button.textContent;
     button.disabled = true;
     button.textContent = 'Processing...';
@@ -160,110 +186,104 @@ async function handleSetOnline(button) {
         alert(`Rider ${livreurId} is now ONLINE.`);
     } catch (error) {
         button.textContent = '❌ Failed';
+        alert(`Failed to set status: ${error.message}`);
     } finally {
         button.disabled = false;
         setTimeout(() => button.textContent = originalText, 3000);
     }
 }
 
-/**
- * This function is now the single source of truth for all context-aware buttons.
- * It is called by the MutationObserver whenever the page content changes.
- */
-function updateContextualButtonsVisibility() {
-    // --- Handle Rider "Set Online" Button ---
-    const setOnlineBtn = document.getElementById(SET_ONLINE_BUTTON_ID);
-    if (setOnlineBtn) {
-        setOnlineBtn.style.display = extractLivreurId() ? 'inline-block' : 'none';
-    }
 
-    // --- Handle Order-Context Buttons (Maps, Email, Phone) ---
-    const newOrderId = extractOrderId();
+/**
+ * Shows or hides the order-specific buttons and updates their text.
+ */
+function updateOrderButtons() {
     const emailBtn = document.getElementById(COPY_EMAIL_BUTTON_ID);
     const phoneBtn = document.getElementById(COPY_PHONE_BUTTON_ID);
     const mapsBtn = document.getElementById(OPEN_MAPS_BUTTON_ID);
     if (!emailBtn || !phoneBtn || !mapsBtn) return;
 
-    if (newOrderId) {
-        if (newOrderId !== currentOrderId) {
-            // New order page detected, clear old data and fetch new.
-            currentOrderId = newOrderId;
-            orderData = null;
-            fetchOrderData(newOrderId);
-        }
-    } else {
-        // No longer on an order page.
-        currentOrderId = null;
-        orderData = null;
-    }
-    
-    // Set visibility based on whether we have cached orderData.
-    const shouldBeVisible = !!orderData;
+    const shouldBeVisible = !!orderData; // True if orderData is not null
+
     emailBtn.style.display = shouldBeVisible ? 'inline-block' : 'none';
     phoneBtn.style.display = shouldBeVisible ? 'inline-block' : 'none';
     mapsBtn.style.display = shouldBeVisible ? 'inline-block' : 'none';
 }
 
-
 /**
- * This function ONLY handles the phone number input check, running every second.
+ * Main check function that runs every second.
  */
-function mainPhoneCheck() {
+function mainCheck() {
+    initializeUI(); // Ensure UI exists.
+
+    // --- Section 1: Handle Order-Context Buttons (Maps, Email, Phone) ---
+    const newOrderId = extractOrderId();
+    if (newOrderId) {
+        if (newOrderId !== currentOrderId) {
+            // New order page detected, fetch its data.
+            currentOrderId = newOrderId;
+            orderData = null; // Clear old data
+            updateOrderButtons(); // Hide buttons immediately
+            fetchOrderData(newOrderId);
+        } else if (orderData) {
+            // We are on the same order page and have data, ensure buttons are visible.
+            updateOrderButtons();
+        }
+    } else if (currentOrderId) {
+        // We are no longer on an order page, clear data and hide buttons.
+        currentOrderId = null;
+        orderData = null;
+        updateOrderButtons();
+    }
+
+    // --- Section 2: Handle Rider "Set Online" Button ---
+    const setOnlineBtn = document.getElementById(SET_ONLINE_BUTTON_ID);
+    if (setOnlineBtn) {
+        setOnlineBtn.style.display = extractLivreurId() ? 'inline-block' : 'none';
+    }
+
+    // --- Section 3: Handle Customer Order History Panel ---
     const phoneInput = document.getElementById('phone');
     const container = document.getElementById(CONTAINER_ID);
     const resultText = document.getElementById(RESULT_ELEMENT_ID);
-    if (!container || !resultText) return;
 
     if (!phoneInput || !phoneInput.value) {
-        resultText.style.display = 'none';
-        // Make the whole container disappear if neither part is visible
-        if (document.getElementById(SET_ONLINE_BUTTON_ID)?.style.display === 'none' && !currentOrderId) {
-            container.style.visibility = 'hidden';
-            container.style.opacity = '0';
-        }
+        if(resultText) resultText.style.display = 'none'; // Hide the text part
         return;
     }
-
-    // If we are here, it means the phone input has value, so the panel should be visible.
-    resultText.style.display = 'block';
-    container.style.visibility = 'visible';
-    container.style.opacity = '1';
+    
+    if(resultText) resultText.style.display = 'block'; // Show the text part
+    if(container) {
+        container.style.visibility = 'visible';
+        container.style.opacity = '1';
+    }
 
     const currentPhoneNumber = phoneInput.value;
     const savedPhone = localStorage.getItem('savedPhoneNumber');
     const savedText = localStorage.getItem('savedDisplayText');
 
     if (currentPhoneNumber === savedPhone && savedText) {
-        resultText.textContent = savedText;
+        if(resultText) resultText.textContent = savedText;
     } else {
+        // This is a simple API search, no need for async/await here
         const url = `https://livry.flexi-apps.com/api/v1/admin/users?%24filter=%7B%22q%22%3A%22${currentPhoneNumber}%22%7D`;
-        fetch(url).then(res => res.json()).then(data => {
-            let displayText = 'Resto PLUS (+)';
-            if (data.value && data.value.length > 0) {
-                const total = data.value.reduce((sum, user) => sum + user.ordersCount, 0);
-                displayText = `Orders: ${total}`;
-            }
-            localStorage.setItem('savedDisplayText', displayText);
-            localStorage.setItem('savedPhoneNumber', currentPhoneNumber);
-            resultText.textContent = displayText;
-        });
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                let displayText = 'Resto PLUS (+)';
+                if (data.value && data.value.length > 0) {
+                    const total = data.value.reduce((sum, user) => sum + user.ordersCount, 0);
+                    displayText = `Orders: ${total}`;
+                }
+                localStorage.setItem('savedDisplayText', displayText);
+                localStorage.setItem('savedPhoneNumber', currentPhoneNumber);
+                if(resultText) resultText.textContent = displayText;
+            });
     }
 }
 
 // --- EXECUTION ---
+mainCheck(); // Run once immediately.
+setInterval(mainCheck, 1000); // Check for updates every second.
 
-// 1. Build the UI as soon as the script runs.
-initializeUI();
-
-// 2. Start the MutationObserver to watch for DOM changes.
-const observer = new MutationObserver(updateContextualButtonsVisibility);
-observer.observe(document.body, { childList: true, subtree: true });
-
-// 3. Run the checks once at the start to set the initial state.
-updateContextualButtonsVisibility();
-mainPhoneCheck();
-
-// 4. Start the timed loop ONLY for the phone input value.
-setInterval(mainPhoneCheck, 1000);
-
-console.log("✅ Livry Super Toolkit (Stabilized) is running...");
+console.log("✅ Livry Super Toolkit is running...");
