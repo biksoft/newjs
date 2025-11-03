@@ -1,160 +1,175 @@
-// url: https://raw.githubusercontent.com/biksoft/newjs/main/brlivry.js
-// Optimized to reduce duplicate observers and high-frequency intervals.
-
-(() => {
+(function () {
     'use strict';
+
+    // --- Global State ---
+    let mainIntervalId = null;
+    let observer = null;
+    let isInitialized = false; 
+
+    // --- Helper Functions ---
 
     /**
      * Applies color styles to rows based on their type and status.
-     * This function is now called by the main script after DOM changes.
      */
     function applyAllRowStyles() {
-        const rows = document.querySelectorAll(
-            'tr[resource="orders"], tr[resource="partnerOrders"], tr[resource="supermarket-orders"]'
-        );
+        // Targets rows in order tables
+        const rows = document.querySelectorAll('tr[resource="orders"], tr[resource="partnerOrders"], tr[resource="supermarket-orders"]');
+        
         rows.forEach(row => {
-            row.style.backgroundColor = ''; // Reset background first
+            row.style.backgroundColor = ''; 
 
-            const typeCellSpan = row.querySelector('td.column-type span');
-            const type = typeCellSpan?.textContent.trim();
+            const type = row.querySelector('td.column-type span')?.textContent.trim();
             const clientStatus = row.querySelector('td.column-client_status span')?.textContent.trim();
             const orderStatus = row.querySelector('td.column-status span')?.textContent.trim();
 
+            if (!type) return;
+
+            let newColor = '';
+
+            // Logic for 'Planifiée' orders
             if (type === 'Planifiée') {
-                 if (clientStatus === 'Acceptée' && orderStatus === 'En recherche') {
-                    row.style.backgroundColor = '#fc93d0';
+                if (clientStatus === 'Acceptée' && orderStatus === 'En recherche') {
+                    newColor = '#fc93d0';
                 } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée') {
-                    row.style.backgroundColor = '#5b9bd5';
+                    newColor = '#5b9bd5';
                 } else if (clientStatus === 'Déposée' || orderStatus === 'Déposée') {
-                    row.style.backgroundColor = '#42ff79';
+                    newColor = '#42ff79';
                 } else if (clientStatus === 'Expirée' || orderStatus === 'Expirée') {
-                    row.style.backgroundColor = '#ff4242';
+                    newColor = '#ff4242';
                 } else {
-                    row.style.backgroundColor = '#fc93d0';
+                    newColor = '#fc93d0';
                 }
-            } else {
+            } 
+            // Logic for other order types
+            else {
                 if (clientStatus === 'Déposée' || orderStatus === 'Déposée') {
-                    row.style.backgroundColor = '#42ff79';
+                    newColor = '#42ff79';
                 } else if (clientStatus === 'Récupérée' || orderStatus === 'Récupérée' || clientStatus === 'Livreur en route' || clientStatus === 'Prête') {
-                    row.style.backgroundColor = '#5b9bd5';
+                    newColor = '#5b9bd5';
                 } else if (clientStatus === 'Annulée' || orderStatus === 'Annulée' || clientStatus === 'Expirée' || orderStatus === 'Expirée') {
-                    row.style.backgroundColor = '#ff4242';
+                    newColor = '#ff4242';
                 } else if (clientStatus === 'En attente de paiement' || clientStatus === 'En préparation' || orderStatus === 'Acceptée') {
-                    row.style.backgroundColor = '#ffeb42';
+                    newColor = '#ffeb42';
                 }
+            }
+            
+            if (newColor) {
+                row.style.backgroundColor = newColor;
             }
         });
     }
 
     /**
      * Finds and marks duplicate order IDs with emojis.
-     * This function is now called by the main script after DOM changes.
      */
     function detectAndHighlightDuplicates() {
+        // Clean previous emojis in one go
+        document.querySelectorAll('.duplicate-emoji-red, .duplicate-emoji-green').forEach(emoji => emoji.remove());
+
         const tdElements = document.querySelectorAll('td.column-order_id span, td.column-code span');
-        const values = Array.from(tdElements).map(span => ({ value: span.textContent.trim(), td: span.closest('td') }));
-        const valueCounts = {};
-        values.forEach(({ value, td }) => {
-            if (!valueCounts[value]) valueCounts[value] = { tds: [] };
-            valueCounts[value].tds.push(td);
+        const valueMap = new Map();
+
+        // Single pass to count and collect cells
+        tdElements.forEach(span => {
+            const value = span.textContent.trim();
+            const td = span.closest('td');
+            if (value) {
+                if (!valueMap.has(value)) {
+                    valueMap.set(value, []);
+                }
+                valueMap.get(value).push(td);
+            }
         });
-        Object.keys(valueCounts).forEach(value => {
-            const { tds } = valueCounts[value];
-            tds.forEach(td => cleanEmoji(td));
+
+        // Single pass to apply emojis
+        for (const tds of valueMap.values()) {
             if (tds.length > 1) {
                 tds.forEach((td, index) => {
                     const isLast = index === tds.length - 1;
-                    addEmoji(td, isLast ? '✅' : '🔴', isLast ? 'duplicate-emoji-green' : 'duplicate-emoji-red');
+                    const emoji = isLast ? '✅' : '🔴';
+                    const className = isLast ? 'duplicate-emoji-green' : 'duplicate-emoji-red';
+
+                    const emojiSpan = document.createElement('span');
+                    emojiSpan.textContent = emoji;
+                    emojiSpan.classList.add(className);
+                    
+                    if (!td.querySelector(`.${className}`)) { 
+                        td.appendChild(emojiSpan);
+                    }
                 });
             }
-        });
-    }
-
-    function addEmoji(td, emoji, className) {
-        if (!td.querySelector(`.${className}`)) {
-            const emojiSpan = document.createElement('span');
-            emojiSpan.textContent = emoji;
-            emojiSpan.classList.add(className);
-            td.appendChild(emojiSpan);
         }
     }
 
-    function cleanEmoji(td) {
-        const existingEmojis = td.querySelectorAll('.duplicate-emoji-red, .duplicate-emoji-green');
-        existingEmojis.forEach(emoji => emoji.remove());
-    }
 
     /**
-     * Efficiently scans the table to get all "Planifiée" data.
+     * Efficiently scans the table ONCE to get all "Planifiée" data.
      */
     function getPlanifieData() {
-        const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body');
+        const tbody = document.querySelector('tbody.MuiTableBody-root.datagrid-body'); 
         const planifieOrders = [];
 
         if (tbody) {
             const rows = tbody.querySelectorAll('tr');
             rows.forEach(tr => {
-                const typeCell = tr.querySelector('td.column-type span');
-                // Check if the type is Planifiée
-                if (typeCell?.textContent.trim() === 'Planifiée') {
-                    const livreurStatusCell = tr.querySelector('td.column-livreur_status span');
-                    // Check for specific statuses for display
-                    if (livreurStatusCell?.textContent.trim() === 'En recherche' || livreurStatusCell?.textContent.trim() === 'Acceptée') {
-                        const collectPointCell = tr.querySelector('td.column-collect_point\\.name span');
-                        const orderIdCell = tr.querySelector('td.column-order_id span');
-                        const orderDateCell = tr.querySelector('td.column-order_date span');
+                const type = tr.querySelector('td.column-type span')?.textContent.trim();
+                const livreurStatus = tr.querySelector('td.column-livreur_status span')?.textContent.trim();
+                
+                if (type === 'Planifiée' && (livreurStatus === 'En recherche' || livreurStatus === 'Acceptée')) {
+                    
+                    const collectPoint = tr.querySelector('td.column-collect_point\\.name span')?.textContent.trim();
+                    const orderId = tr.querySelector('td.column-order_id span')?.textContent.trim();
+                    const orderDate = tr.querySelector('td.column-order_date span')?.textContent.trim();
 
-                        if (collectPointCell && orderIdCell && orderDateCell) {
-                            planifieOrders.push({
-                                collectPoint: collectPointCell.textContent.trim(),
-                                orderId: orderIdCell.textContent.trim(),
-                                orderDate: orderDateCell.textContent.trim(),
-                            });
-                        }
+                    if (collectPoint && orderId && orderDate) {
+                        planifieOrders.push({ collectPoint, orderId, orderDate });
                     }
                 }
             });
         }
 
-        return {
-            results: planifieOrders,
-            count: planifieOrders.length,
-        };
+        return planifieOrders;
     }
 
     /**
      * Creates or updates the custom form with the "Planifiée" order details.
-     * This function is now called by the main script on a timer.
      */
     function createOrUpdatePlanifieForm() {
-        // Look for existing form or the main form structure
-        const existingInfoForm = document.getElementById('planifie-results-form');
         const targetForm = document.querySelector('form.jss55.jss56');
+        if (!targetForm) return; 
 
-        if (!targetForm) return;
-
-        // If the custom form exists, remove it to prevent duplicates
-        if (existingInfoForm) existingInfoForm.remove();
-
-        const nextSibling = targetForm.nextElementSibling;
-        if (!nextSibling || nextSibling.tagName !== 'SPAN') return;
-
-        const newForm = document.createElement('form');
-        newForm.id = 'planifie-results-form';
-        Object.assign(newForm.style, { border: '2px dashed #007bff', padding: '20px', margin: '10px', borderRadius: '8px', backgroundColor: '#f9f9f9', fontFamily: 'Arial, sans-serif' });
-
+        let newForm = document.getElementById('planifie-results-form');
         const planifieData = getPlanifieData();
-        const count = planifieData.count;
-        const results = planifieData.results;
+        const count = planifieData.length;
 
+        if (!newForm) {
+            // Create form element
+            newForm = document.createElement('form');
+            newForm.id = 'planifie-results-form';
+            Object.assign(newForm.style, { border: '2px dashed #007bff', padding: '20px', margin: '10px', borderRadius: '8px', backgroundColor: '#f9f9f9', fontFamily: 'Arial, sans-serif' });
+            
+            // Insert the new form after the target element
+            const nextSibling = targetForm.nextElementSibling;
+            if (nextSibling && nextSibling.tagName === 'SPAN') {
+                targetForm.parentNode.insertBefore(newForm, nextSibling);
+            } else {
+                 targetForm.parentNode.insertBefore(newForm, targetForm.nextSibling);
+            }
+        } else {
+             newForm.innerHTML = ''; // Clear for update
+        }
+        
+        // Update count display
         const countDiv = document.createElement('div');
         countDiv.style.cssText = 'margin-bottom: 15px; font-size: 1.5em; font-weight: 600;';
         countDiv.innerHTML = `<span>Planifie: </span><span style="color: #007bff;">${count}</span>`;
         newForm.appendChild(countDiv);
 
-        if (results.length > 0) {
+        if (planifieData.length > 0) {
+            // Create and populate results table
             const table = document.createElement('table');
             table.style.cssText = 'width: 100%; border-collapse: collapse;';
+            
             const headerRow = table.insertRow();
             ['Collect Point', 'Order ID', 'Date Commande'].forEach(headerText => {
                 const th = document.createElement('th');
@@ -162,7 +177,8 @@
                 th.style.cssText = 'border: 1px solid #ddd; padding: 8px; background-color: #007bff; color: white; text-align: left;';
                 headerRow.appendChild(th);
             });
-            results.forEach(rowData => {
+            
+            planifieData.forEach(rowData => {
                 const row = table.insertRow();
                 Object.values(rowData).forEach(text => {
                     const cell = row.insertCell();
@@ -171,21 +187,72 @@
                 });
             });
             newForm.appendChild(table);
+            
         } else {
+            // Display no data message
             const noDataDiv = document.createElement('div');
             noDataDiv.textContent = 'Aucune commande planifiée à afficher.';
             noDataDiv.style.cssText = 'color: red; margin-top: 10px;';
             newForm.appendChild(noDataDiv);
         }
-        targetForm.parentNode.insertBefore(newForm, nextSibling);
     }
 
-    // Expose the core functions globally for the main script to call
-    window.btlivry = {
-        applyAllRowStyles,
-        detectAndHighlightDuplicates,
-        createOrUpdatePlanifieForm
-    };
+    /**
+     * Initializes the observer to watch for page changes.
+     */
+    function initializeObserver() {
+        if (observer) return; 
 
-    console.log("✅ btlivry.js functions initialized.");
+        // Observer reacts to DOM mutations to apply styling and duplication highlights instantly
+        observer = new MutationObserver(() => {
+            applyAllRowStyles();
+            detectAndHighlightDuplicates();
+        });
+        
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    /**
+     * Main function: Checks for target element and starts/stops all recurring tasks.
+     */
+    function initializeOrRefreshView() {
+        const targetForm = document.querySelector('form.jss55.jss56');
+        
+        if (!targetForm) {
+            // Stop recurring tasks if target is not found (e.g., user navigated away)
+            if (mainIntervalId) {
+                clearInterval(mainIntervalId);
+                mainIntervalId = null;
+            }
+            return;
+        }
+
+        if (!isInitialized) {
+             initializeObserver(); // Start the persistent observer
+             isInitialized = true;
+        }
+        
+        // Immediate run to process the currently loaded table data
+        createOrUpdatePlanifieForm();
+        applyAllRowStyles();
+        detectAndHighlightDuplicates();
+        
+        // Set up the interval for periodic data freshness (2 seconds)
+        if (mainIntervalId) {
+            clearInterval(mainIntervalId);
+        }
+        
+        mainIntervalId = setInterval(createOrUpdatePlanifieForm, 2000);
+    }
+
+
+    // --- SCRIPT EXECUTION ---
+
+    // Listen for hash changes (SPA navigation) and full page loads
+    window.addEventListener('hashchange', initializeOrRefreshView);
+    window.addEventListener('load', initializeOrRefreshView);
+    
+    // Initial check (100ms delay to ensure React app has started rendering)
+    setTimeout(initializeOrRefreshView, 100); 
+
 })();
