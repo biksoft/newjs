@@ -1,7 +1,8 @@
 'use strict';
 
 // --- IDs & Selectors ---
-const CONTAINER_ID = 'livry-tools-container';
+// Note: CONTAINER_ID is no longer used for the main wrapper but is kept for context if needed later.
+const CONTAINER_ID = 'livry-tools-container'; 
 const RESULT_ELEMENT_ID = 'persistent-orders-count-result';
 const SET_ONLINE_BUTTON_ID = 'set-livreur-online-button';
 const COPY_EMAIL_BUTTON_ID = 'copy-order-email-button';
@@ -11,7 +12,7 @@ const OPEN_MAPS_BUTTON_ID = 'open-order-maps-button';
 const PRIMARY_RIDER_ID_SELECTOR = 'input[name="livreur"]';
 const SECONDARY_RIDER_ID_SELECTOR = 'input[name="livreur._id"]';
 const ORDER_ID_SOURCE_SELECTOR = 'a.form-tab[href^="#/orders/"]';
-// New Selector for the target position
+// Selector for the target position (the divider)
 const TARGET_ELEMENT_SELECTOR = 'hr.MuiDivider-root'; 
 
 // --- Global State ---
@@ -70,7 +71,6 @@ async function fetchOrderData(orderId) {
         orderData = {
             email: restaurantInfo.email || "N/A",
             phone: restaurantInfo.phoneNumber || restaurantInfo.phone || "N/A",
-            // Corrected URL structure for Google Maps search with coordinates
             mapsLink: `https://www.google.com/maps/search/?api=1&query=${coordinates[1]},${coordinates[0]}`
         };
         console.log(`✅ Data fetched for order ${orderId}.`);
@@ -85,44 +85,33 @@ async function fetchOrderData(orderId) {
 
 
 /**
- * Creates the entire UI toolkit ONCE and appends it to the target element.
+ * Creates the UI toolkit (now just the result text and button group) ONCE and appends it.
  */
 function initializeUI() {
-    // We only proceed if the target element is available
     const targetElement = document.querySelector(TARGET_ELEMENT_SELECTOR);
-    if (!targetElement || document.getElementById(CONTAINER_ID)) return;
+    // Check if the target or the result element (which is part of the new fixed UI location) already exists
+    if (!targetElement || document.getElementById(RESULT_ELEMENT_ID)) return;
 
-    const container = document.createElement('div');
-    container.id = CONTAINER_ID;
-    // --- UPDATED CSS for Fixed Position & Mobile Responsiveness ---
-    container.style.cssText = `
-        position: fixed !important; 
-        top: 20px !important; 
-        right: 20px !important;
-        z-index: 9999 !important; 
-        background-color: #ffffff !important;
-        padding: 15px !important; 
-        border-radius: 12px !important;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important; 
-        display: flex !important;
-        flex-direction: column !important; 
-        align-items: flex-start !important;
-        gap: 12px !important; 
-        max-width: 90vw; /* Added for mobile responsiveness */
-        width: auto;
-        visibility: hidden; 
-        opacity: 0;
-        transition: visibility 0s, opacity 0.3s ease-in-out !important;
-    `;
-
+    // --- 1. Result Element (Order Count) ---
     const resultElement = document.createElement('p');
     resultElement.id = RESULT_ELEMENT_ID;
-    resultElement.style.cssText = 'color: red !important; font-weight: bold !important; font-size: 1.1rem !important; margin: 0 0 5px 0 !important; white-space: nowrap; border-bottom: 1px solid #eee; padding-bottom: 10px; width: 100%;';
-    container.appendChild(resultElement);
+    resultElement.style.cssText = 'color: red !important; font-weight: bold !important; font-size: 1.1rem !important; margin: 15px 0 10px 0 !important; white-space: nowrap; padding-bottom: 5px; width: 100%;';
+    // Append the result text right after the divider
+    targetElement.parentNode.insertBefore(resultElement, targetElement.nextSibling);
 
+
+    // --- 2. Button Group ---
     const buttonGroup = document.createElement('div');
-    // --- UPDATED CSS for Button Group ---
-    buttonGroup.style.cssText = 'display: flex !important; gap: 10px !important; flex-wrap: wrap !important; justify-content: flex-start !important;';
+    buttonGroup.id = CONTAINER_ID; // Re-use the CONTAINER_ID for the button group wrapper
+    
+    // Use flexible CSS that fits within the page flow
+    buttonGroup.style.cssText = `
+        display: flex !important; 
+        gap: 10px !important; 
+        flex-wrap: wrap !important; 
+        justify-content: flex-start !important;
+        margin-bottom: 15px !important; /* Add some space below the buttons */
+    `;
 
     // --- Button Definitions ---
     const buttons = [
@@ -144,23 +133,21 @@ function initializeUI() {
         button.id = config.id;
         button.textContent = config.text;
         button.type = 'button';
-        // --- UPDATED CSS for Buttons (Added width: 100% for full width on mobile wrap) ---
         button.style.cssText = `
             background-color: ${config.color} !important; color: white !important;
             padding: 8px 15px !important; border: none !important; border-radius: 8px !important;
             cursor: pointer !important; font-weight: 500 !important; font-size: 0.9rem !important;
             transition: background-color 0.3s ease !important;
             display: ${config.hidden ? 'none' : 'inline-block'};
-            flex-grow: 1; /* Allows buttons to grow and fill space */
-            min-width: fit-content; /* Prevents text cutting off */
+            flex-grow: 1; /* Key for responsiveness, allows buttons to grow on wrap */
+            min-width: fit-content;
         `;
         button.addEventListener('click', () => config.onClick(button));
         buttonGroup.appendChild(button);
     });
 
-    container.appendChild(buttonGroup);
-    // Append the container immediately AFTER the target element
-    targetElement.parentNode.insertBefore(container, targetElement.nextSibling);
+    // Append the button group immediately after the result element
+    resultElement.parentNode.insertBefore(buttonGroup, resultElement.nextSibling);
 }
 
 /**
@@ -235,24 +222,20 @@ function updateOrderButtons() {
  * Main check function that runs every second.
  */
 function mainCheck() {
-    // The initializeUI function is now idempotent and will create the UI if the target is found.
-    initializeUI(); 
+    initializeUI(); // Ensure UI exists and is positioned correctly.
 
     // --- Section 1: Handle Order-Context Buttons (Maps, Email, Phone) ---
     const newOrderId = extractOrderId();
     if (newOrderId) {
         if (newOrderId !== currentOrderId) {
-            // New order page detected, fetch its data.
             currentOrderId = newOrderId;
             orderData = null; // Clear old data
-            updateOrderButtons(); // Hide buttons immediately
+            updateOrderButtons(); 
             fetchOrderData(newOrderId);
         } else if (orderData) {
-            // We are on the same order page and have data, ensure buttons are visible.
             updateOrderButtons();
         }
     } else if (currentOrderId) {
-        // We are no longer on an order page, clear data and hide buttons.
         currentOrderId = null;
         orderData = null;
         updateOrderButtons();
@@ -264,27 +247,22 @@ function mainCheck() {
         setOnlineBtn.style.display = extractLivreurId() ? 'inline-block' : 'none';
     }
 
-    // --- Section 3: Handle Customer Order History Panel ---
+    // --- Section 3: Handle Customer Order History Panel Visibility and Data Fetch ---
     const phoneInput = document.getElementById('phone');
-    const container = document.getElementById(CONTAINER_ID);
     const resultText = document.getElementById(RESULT_ELEMENT_ID);
+    const buttonGroup = document.getElementById(CONTAINER_ID); // Now refers to the button group
 
-    // If on a page without the phone input, hide the entire tool container for better UX.
+    // If the elements don't exist yet (e.g., waiting for initializeUI) or no phone value, hide them.
     if (!phoneInput || !phoneInput.value) {
-        if(container) {
-            container.style.visibility = 'hidden';
-            container.style.opacity = '0';
-        }
-        if(resultText) resultText.style.display = 'none'; // Hide the text part
+        if(resultText) resultText.style.display = 'none'; 
+        if(buttonGroup) buttonGroup.style.display = 'none';
         return;
     }
     
-    // Show the container and result text when phone input is found.
+    // Show the result text and button group when phone input is present.
     if(resultText) resultText.style.display = 'block'; 
-    if(container) {
-        container.style.visibility = 'visible';
-        container.style.opacity = '1';
-    }
+    if(buttonGroup) buttonGroup.style.display = 'flex';
+
 
     const currentPhoneNumber = phoneInput.value;
     const savedPhone = localStorage.getItem('savedPhoneNumber');
@@ -293,7 +271,6 @@ function mainCheck() {
     if (currentPhoneNumber === savedPhone && savedText) {
         if(resultText) resultText.textContent = savedText;
     } else {
-        // This is a simple API search, no need for async/await here
         const url = `https://livry.flexi-apps.com/api/v1/admin/users?%24filter=%7B%22q%22%3A%22${currentPhoneNumber}%22%7D`;
         fetch(url)
             .then(res => res.json())
@@ -314,4 +291,4 @@ function mainCheck() {
 mainCheck(); // Run once immediately.
 setInterval(mainCheck, 1000); // Check for updates every second.
 
-console.log("✅ Livry Super Toolkit is running...");
+console.log("✅ Livry Super Toolkit (In-Line Version) is running...");
