@@ -82,7 +82,7 @@ async function fetchOrderData(orderId) {
         orderData = {
             email: restaurantInfo.email || "N/A",
             phone: restaurantInfo.phoneNumber || restaurantInfo.phone || "N/A",
-            mapsLink: `https://www.google.com/maps/search/?api=1&query=$${coordinates[1]},${coordinates[0]}`
+            mapsLink: `https://www.google.com/maps/search/?api=1&query=${coordinates[1]},${coordinates[0]}`
         };
         console.log(`✅ Data fetched for order ${orderId}.`);
         updateContextualButtonsVisibility();
