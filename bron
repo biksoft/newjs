@@ -1,400 +1,365 @@
-(function() {
-    'use strict';
+'use strict';
 
-    // --- Configuration & Global Data Store ---
-    let riderCalculationCache = {};
-    let currentOrderId = null;
+// --- CONFIGURATION & GLOBAL STATE ---
+let riderCalculationCache = {};
+let currentOrderId = null;
+
+// Rider and list config
+const CLEANING_RIDER_NAME = "Rider cleaning";
+const CLEANING_RIDER_ID = "5fef37220b63c0111edee4b0"; 
+const NUM_NEAR_RIDERS = 9; 
+const DISPLAY_LIMIT = NUM_NEAR_RIDERS + 1; 
+const ACTIVE_STATUSES = ['online', 'en_course'];
+
+const REFRESH_BUTTON_TITLE = 'Actualiser';
+
+// --- UTILITY FUNCTIONS ---
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; 
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; 
+}
+
+function getOrderInfoFromURL() {
+    const hash = window.location.hash;
     
-    const CLEANING_RIDER_NAME = "Rider cleaning";
-    const CLEANING_RIDER_ID = "5fef37220b63c0111edee4b0"; 
-    const NUM_NEAR_RIDERS = 9; 
-    const DISPLAY_LIMIT = NUM_NEAR_RIDERS + 1; 
+    if (hash.startsWith('#/orders/')) {
+        const id = hash.substring('#/orders/'.length);
+        if (id.length > 5 && /^[0-9a-f]+$/.test(id)) {
+            return { basePath: 'orders', orderId: id, targetId: 'livreur._id-helper-text' };
+        }
+    } 
     
-    const ACTIVE_STATUSES = ['online', 'en_course'];
-
-    // --- Utility Functions ---
-
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371; 
-        const dLat = (lat2 - lat1) * (Math.PI / 180);
-        const dLon = (lon2 - lon1) * (Math.PI / 180);
-        const a = 
-            Math.sin(dLat / 2) * Math.sin(dDat / 2) +
-            Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c; 
-    }
-
-    function getOrderInfoFromURL() {
-        const hash = window.location.hash;
-        
-        if (hash.startsWith('#/orders/')) {
-            const id = hash.substring('#/orders/'.length);
-            if (id.length > 5 && /^[0-9a-f]+$/.test(id)) {
-                return { basePath: 'orders', orderId: id, targetId: 'livreur._id-helper-text' };
-            }
-        } 
-        
-        else if (hash.startsWith('#/partnerOrders/')) {
-            const id = hash.substring('#/partnerOrders/'.length);
-            if (id.length > 5 && /^[0-9a-f]+$/.test(id)) {
-                return { basePath: 'partnerOrders', orderId: id, targetId: 'livreur-helper-text' };
-            }
-        }
-        
-        return null;
-    }
-
-    // --- Assignment and Status Update Logic ---
-
-    async function makeRiderOnline(event, riderId) {
-        if (event && event.preventDefault) {
-            event.preventDefault();
-            event.stopPropagation(); 
-        }
-
-        const apiUrl = `https://livry.flexi-apps.com/api/v1/admin/livreurs/${riderId}`;
-        const requestData = { status: "online" };
-
-        console.log(`Sending PUT request to set Rider ${riderId.substring(0, 8)}... status to 'online'.`);
-
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
-            });
-
-            if (response.ok) {
-                // Force a full recalculation and visual update
-                const info = getOrderInfoFromURL();
-                if (info) {
-                    delete riderCalculationCache[info.orderId];
-                    // Use debouncedRun to safely re-execute the logic after status change
-                    debouncedRun();
-                }
-                alert(`✅ Rider ${riderId.substring(0, 8)}... status successfully updated to ONLINE.`);
-                
-            } else {
-                const errorText = await response.text();
-                alert(`❌ Failed to set rider status: HTTP ${response.status}\nDetails: ${errorText.substring(0, 100)}...`);
-                console.error(`Failed to update rider status. HTTP Status: ${response.status}`, errorText);
-            }
-        } catch (error) {
-            console.error('❌ Network error during status update:', error);
-            alert(`❌ Network Error: Could not update rider status.`);
+    else if (hash.startsWith('#/partnerOrders/')) {
+        const id = hash.substring('#/partnerOrders/'.length);
+        if (id.length > 5 && /^[0-9a-f]+$/.test(id)) {
+            return { basePath: 'partnerOrders', orderId: id, targetId: 'livreur-helper-text' };
         }
     }
+    
+    return null;
+}
 
-    async function assignRiderToOrder(event, orderId, riderId, basePath) {
-        if (event && event.preventDefault) {
-            event.preventDefault();
-            event.stopPropagation(); 
+// --- API LOGIC (Assignment and Status Update) ---
+
+async function makeRiderOnline(event, riderId) {
+    if (event && event.preventDefault) { event.preventDefault(); event.stopPropagation(); }
+
+    const apiUrl = `https://livry.flexi-apps.com/api/v1/admin/livreurs/${riderId}`;
+    try {
+        const response = await fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: "online" }) });
+
+        if (response.ok) {
+            alert(`✅ Rider ${riderId.substring(0, 8)}... status successfully updated to ONLINE.`);
+            runScriptLogic(true); 
+        } else {
+            const errorText = await response.text();
+            alert(`❌ Failed to set rider status: HTTP ${response.status}`);
+            console.error(`Failed to update rider status. HTTP Status: ${response.status}`, errorText);
         }
-        
-        if (!orderId || !riderId || !basePath) {
-            console.error("Assignment failed: Missing Order ID, Rider ID, or Base Path.");
-            return;
-        }
-
-        const apiUrl = `https://livry.flexi-apps.com/api/v1/admin/${basePath}/${orderId}/assign`;
-        
-        console.log(`Sending POST request to assign Rider ${riderId.substring(0, 8)}... to Order ${orderId.substring(0, 8)}... via /${basePath}/assign`);
-        
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ livreur: riderId })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                
-                console.log(`%c[BACKEND ASSIGN SUCCESS] Order: ${orderId}, Rider: ${riderId}`, 'color: #28a745; font-weight: bold;');
-                
-                alert(`✅ Assignment Successful for ${basePath.toUpperCase()}!\nOrder: ${orderId.substring(0, 8)}...\nRider: ${riderId.substring(0, 8)}...`);
-                
-                const info = getOrderInfoFromURL();
-                if (info) {
-                    delete riderCalculationCache[orderId];
-                    // Use debouncedRun to safely re-execute the logic after assignment
-                    debouncedRun();
-                }
-
-            } else {
-                const errorText = await response.text();
-                alert(`❌ Assignment Failed: HTTP ${response.status}\nDetails: ${errorText.substring(0, 100)}...`);
-                console.error(`Assignment failed. HTTP Status: ${response.status}`, errorText);
-            }
-        } catch (error) {
-            console.error('❌ Network error during assignment:', error);
-            alert(`❌ Network Error: Could not connect to assignment API.`);
-        }
+    } catch (error) {
+        console.error('❌ Network error during status update:', error);
     }
+}
+
+async function assignRiderToOrder(event, orderId, riderId, basePath) {
+    if (event && event.preventDefault) { event.preventDefault(); event.stopPropagation(); }
+
+    const apiUrl = `https://livry.flexi-apps.com/api/v1/admin/${basePath}/${orderId}/assign`;
+    
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ livreur: riderId })
+        });
+
+        if (response.ok) {
+            alert(`✅ Assignment Successful for ${basePath.toUpperCase()}!`);
+            runScriptLogic(true); 
+        } else {
+            const errorText = await response.text();
+            alert(`❌ Assignment Failed: HTTP ${response.status}`);
+            console.error(`Assignment failed. HTTP Status: ${response.status}`, errorText);
+        }
+    } catch (error) {
+        console.error('❌ Network error during assignment:', error);
+    }
+}
+
+// --- UI INJECTION & RENDERING ---
+
+function injectRiderList(orderInfo, topRiders) {
+    const helperTextElement = document.getElementById(orderInfo.targetId);
+    
+    if (!helperTextElement) return;
+
+    // Check if our list is already injected by looking for the marker class
+    if (helperTextElement.querySelector('.rider-list-injected')) return;
+
+    // Clear native content and apply base styling
+    helperTextElement.innerHTML = '';
+    helperTextElement.style.cssText = 'color: #1b5e20; font-weight: bold; font-size: 12px;';
+    
+    const resultDiv = document.createElement('div');
+    resultDiv.classList.add('rider-list-injected'); 
+    resultDiv.style.cssText = 'border: 1px solid #007bff50; padding: 5px; border-radius: 3px; background-color: #e8f5e9;';
 
 
-    // --- Injection Function ---
-
-    function injectRiderList(orderInfo, topRiders) {
-        const helperTextElement = document.getElementById(orderInfo.targetId);
+    if (topRiders.length > 0) {
+        let htmlContent = `<strong style="color: #007bff; font-size: 13px;">Top ${topRiders.length} Active Riders:</strong><ul style="list-style: none; padding-left: 0; margin: 3px 0 0 0;">`;
         
-        if (!helperTextElement) return;
-
-        const existingInjected = helperTextElement.querySelector('.rider-list-injected');
-        if (existingInjected) existingInjected.remove();
-
-        console.log(`✅ Injecting rider list into #${orderInfo.targetId}.`);
-
-        helperTextElement.innerHTML = '';
-        helperTextElement.style.color = '#1b5e20'; 
-        helperTextElement.style.fontWeight = 'bold';
-        helperTextElement.style.fontSize = '12px';
-        
-        const resultDiv = document.createElement('div');
-        resultDiv.classList.add('rider-list-injected'); 
-        resultDiv.style.border = '1px solid #007bff50';
-        resultDiv.style.padding = '5px';
-        resultDiv.style.borderRadius = '3px';
-        resultDiv.style.backgroundColor = '#e8f5e9';
-
-
-        if (topRiders.length > 0) {
-            let htmlContent = `<strong style="color: #007bff; font-size: 13px;">Top ${topRiders.length} Active Riders (${orderInfo.basePath}):</strong><ul style="list-style: none; padding-left: 0; margin: 3px 0 0 0;">`;
+        topRiders.forEach((rider, index) => {
+            const isFixed = (rider.id === CLEANING_RIDER_ID);
+            const distanceInfo = isFixed ? '(Fixed)' : `(${rider.distanceKm.toFixed(3)} km)`;
             
-            topRiders.forEach((rider, index) => {
-                const isFixed = (rider.id === CLEANING_RIDER_ID);
-                const distanceInfo = isFixed ? '(Fixed)' : `(${rider.distanceKm.toFixed(3)} km)`;
-                
-                let riderColor = '#1b5e20'; 
-                if (isFixed) {
-                    riderColor = '#f57f17'; 
-                } else if (rider.status === 'en_course') {
-                    riderColor = '#007bff'; 
-                } else if (rider.status === 'online') {
-                    riderColor = '#28a745'; 
-                }
-                
-                let goOnlineButton = '';
-                if (rider.status === 'en_course') {
-                    goOnlineButton = `
+            let riderColor = '#1b5e20'; 
+            if (isFixed) {
+                riderColor = '#f57f17'; // Orange
+            } else if (rider.status === 'en_course') {
+                riderColor = '#007bff'; // Blue
+            } else if (rider.status === 'online') {
+                riderColor = '#28a745'; // Green
+            }
+            
+            let goOnlineButton = '';
+            if (rider.status === 'en_course') {
+                goOnlineButton = `
+                    <button 
+                        onclick="window.makeRiderOnline(event, '${rider.id}')"
+                        style="
+                            background-color: #ffc107; color: black; border: none; border-radius: 4px; 
+                            padding: 2px 6px; font-size: 10px; cursor: pointer; margin-left: 5px;
+                            transition: background-color 0.2s;
+                        "
+                        onmouseover="this.style.backgroundColor='#e0a800'"
+                        onmouseout="this.style.backgroundColor='#ffc107'"
+                    >
+                        Go Online
+                    </button>`;
+            }
+
+            htmlContent += `
+                <li style="margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center;">
+                        <span style="font-weight: bold; margin-right: 5px;">${index + 1}.</span>
+                        <span style="color: ${riderColor}; font-weight: bold; margin-right: 8px; ${isFixed ? 'text-decoration: underline;' : ''}">${rider.name}</span> 
+                        <span style="font-weight: normal; color: #555; font-size: 11px; margin-right: 15px;">${distanceInfo}</span>
+                        
+                        ${goOnlineButton}
+                        
                         <button 
-                            onclick="window.makeRiderOnline(event, '${rider.id}')"
+                            onclick="window.assignRiderToOrder(event, '${orderInfo.orderId}', '${rider.id}', '${orderInfo.basePath}')"
                             style="
-                                background-color: #ffc107; 
-                                color: black; 
-                                border: none; 
-                                border-radius: 4px; 
-                                padding: 2px 6px; 
-                                font-size: 10px; 
-                                cursor: pointer;
-                                margin-left: 5px;
+                                background-color: #28a745; color: white; border: none; border-radius: 4px; 
+                                padding: 2px 6px; font-size: 10px; cursor: pointer;
                                 transition: background-color 0.2s;
                             "
-                            onmouseover="this.style.backgroundColor='#e0a800'"
-                            onmouseout="this.style.backgroundColor='#ffc107'"
+                            onmouseover="this.style.backgroundColor='#218838'"
+                            onmouseout="this.style.backgroundColor='#28a745'"
                         >
-                            Go Online
-                        </button>`;
-                }
-
-                htmlContent += `
-                    <li style="margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: center;">
-                            <span style="font-weight: bold; margin-right: 5px;">${index + 1}.</span>
-                            <span style="color: ${riderColor}; font-weight: bold; margin-right: 8px; ${isFixed ? 'text-decoration: underline;' : ''}">${rider.name}</span> 
-                            <span style="font-weight: normal; color: #555; font-size: 11px; margin-right: 15px;">${distanceInfo}</span>
-                            
-                            ${goOnlineButton}
-                            
-                            <button 
-                                onclick="window.assignRiderToOrder(event, '${orderInfo.orderId}', '${rider.id}', '${orderInfo.basePath}')"
-                                style="
-                                    background-color: #28a745; 
-                                    color: white; 
-                                    border: none; 
-                                    border-radius: 4px; 
-                                    padding: 2px 6px; 
-                                    font-size: 10px; 
-                                    cursor: pointer;
-                                    transition: background-color 0.2s;
-                                "
-                                onmouseover="this.style.backgroundColor='#218838'"
-                                onmouseout="this.style.backgroundColor='#28a745'"
-                            >
-                                Assign
-                            </button>
-                        </div>
-                    </li>
-                `;
-            });
-
-            htmlContent += `</ul>`;
-            resultDiv.innerHTML = htmlContent;
-        } else {
-            resultDiv.style.borderColor = '#c62828';
-            resultDiv.style.backgroundColor = '#ffebee';
-            resultDiv.innerHTML = '<span style="color: #c62828;">😔 **No active riders found.**</span>';
-        }
-
-        helperTextElement.appendChild(resultDiv);
-    }
-
-
-    // --- Calculation Logic ---
-
-    async function findNearestOnlineRiders(orderInfo, forceRecalculation = false) {
-        const cacheKey = orderInfo.orderId;
-        const targetId = orderInfo.targetId;
-
-        if (riderCalculationCache[cacheKey] && !forceRecalculation) {
-            console.log(`Livry Rider Script: Using cached data for ID: ${cacheKey}.`);
-            injectRiderList(orderInfo, riderCalculationCache[cacheKey]);
-            return;
-        }
-        
-        console.log(`\n🚀 Livry Rider Script: Calculating riders for ID: ${cacheKey} (First Run/F orced Recalculation).`);
-        
-        const oldInjected = document.querySelector(`#${targetId} .rider-list-injected`);
-        if (oldInjected) oldInjected.remove();
-
-
-        const restaurantApiUrl = `https://livry.flexi-apps.com/api/v1/admin/${orderInfo.basePath}/${orderInfo.orderId}`;
-        const ridersApiUrl = 'https://livry.flexi-apps.com/api/v1/admin/livreurs/locations?$filter={}&$skip=0&$sort={}&$top=100&range=[0,99]';
-
-        let restaurantLat, restaurantLon;
-        try {
-            const restoResponse = await fetch(restaurantApiUrl);
-            const restoData = await restoResponse.json();
-            
-            let coordinates;
-            if (orderInfo.basePath === 'orders') coordinates = restoData.restaurantInfo?.location?.coordinates;
-            else if (orderInfo.basePath === 'partnerOrders') coordinates = restoData.collect_point?.location?.coordinates;
-
-            if (!coordinates || coordinates.length < 2) {
-                console.error('❌ Livry Rider Script: Could not find valid store coordinates.');
-                return;
-            }
-            restaurantLon = coordinates[0]; 
-            restaurantLat = coordinates[1];
-        } catch (error) {
-            console.error('❌ Livry Rider Script: Error fetching store data.', error);
-            return;
-        }
-
-        let ridersData;
-        try {
-            const ridersResponse = await fetch(ridersApiUrl);
-            ridersData = await ridersResponse.json();
-        } catch (error) {
-            console.error('❌ Livry Rider Script: Error fetching riders data.', error);
-            return;
-        }
-
-        let calculatedRiders = [];
-        let cleaningRiderStatus = 'offline';
-
-        // 1. Calculate distances for all active riders (excluding the fixed one)
-        for (const rider of ridersData.value) {
-            if (rider._id === CLEANING_RIDER_ID) {
-                cleaningRiderStatus = rider.status;
-                continue; 
-            } 
-            
-            const isActive = ACTIVE_STATUSES.includes(rider.status);
-            const hasValidCoordinates = rider.location?.coordinates?.length === 2 && (rider.location.coordinates[0] !== 0 || rider.location.coordinates[1] !== 0);
-
-            if (isActive && hasValidCoordinates) {
-                const distance = calculateDistance(restaurantLat, restaurantLon, rider.location.coordinates[1], rider.location.coordinates[0]);
-
-                calculatedRiders.push({ 
-                    name: rider.name, 
-                    id: rider._id, 
-                    distanceKm: distance,
-                    status: rider.status
-                });
-            }
-        }
-        
-        // 2. Sort all calculated riders and take the top 9
-        calculatedRiders.sort((a, b) => a.distanceKm - b.distanceKm);
-        const top9Riders = calculatedRiders.slice(0, NUM_NEAR_RIDERS); 
-
-        // 3. Create the fixed rider object
-        const fixedRider = {
-             name: CLEANING_RIDER_NAME, 
-             id: CLEANING_RIDER_ID, 
-             distanceKm: -1, 
-             status: cleaningRiderStatus 
-        };
-
-        // 4. Combine: Fixed rider first (Rank #1), then the top 9 calculated riders
-        const topRiders = [fixedRider, ...top9Riders];
-
-        // 5. Final check on the total number of riders (max 10)
-        if (topRiders.length > DISPLAY_LIMIT) {
-             topRiders.length = DISPLAY_LIMIT;
-        }
-
-        riderCalculationCache[cacheKey] = topRiders;
-        injectRiderList(orderInfo, topRiders);
-    }
-
-    // --- Execution Control ---
-
-    function runScriptLogic() {
-        const info = getOrderInfoFromURL();
-        
-        if (!info) {
-             currentOrderId = null;
-             return;
-        }
-
-        if (info.orderId !== currentOrderId) {
-            currentOrderId = info.orderId;
-            console.log(`Livry Rider Script: Detail Page Detected: ${currentOrderId}`);
-        }
-        
-        findNearestOnlineRiders(info); 
-        
-        attachRefreshButtonListener(info);
-    }
-    
-    function attachRefreshButtonListener(info) {
-        const obs = new MutationObserver((mutationsList, observer) => {
-            const refreshButton = document.querySelector('[title="Actualiser"].MuiIconButton-root');
-            
-            if (refreshButton && !refreshButton.listenerAttached) {
-                refreshButton.listenerAttached = true; 
-                refreshButton.addEventListener('click', () => {
-                    console.log(`\n🔄 Refresh button clicked. Forcing recalculation for ID: ${info.orderId}`);
-                    delete riderCalculationCache[info.orderId];
-                    findNearestOnlineRiders(info, true); 
-                });
-                console.log('Livry Rider Script: Attached click listener to "Actualiser" button.');
-                observer.disconnect(); 
-            }
+                            Assign
+                        </button>
+                    </div>
+                </li>
+            `;
         });
-        
-        obs.observe(document.body, { childList: true, subtree: true });
+
+        htmlContent += `</ul>`;
+        resultDiv.innerHTML = htmlContent;
+    } else {
+        resultDiv.style.borderColor = '#c62828';
+        resultDiv.style.backgroundColor = '#ffebee';
+        resultDiv.innerHTML = '<span style="color: #c62828;">😔 **No active riders found.**</span>';
     }
 
-    // --- Final Execution ---
+    helperTextElement.appendChild(resultDiv);
+}
+
+// --- RIDER CALCULATION LOGIC ---
+
+async function runRiderCalculation(orderInfo, forceRecalculation) {
+    const cacheKey = orderInfo.orderId;
+    const targetId = orderInfo.targetId;
+
+    if (riderCalculationCache[cacheKey] && !forceRecalculation) {
+        injectRiderList(orderInfo, riderCalculationCache[cacheKey]);
+        return;
+    }
     
-    // Expose functions globally for inline HTML buttons
-    window.assignRiderToOrder = assignRiderToOrder;
-    window.makeRiderOnline = makeRiderOnline; 
+    console.log(`\n🚀 Livry Rider Script: Calculating riders for ID: ${cacheKey} (First Run/F orced Recalculation).`);
+    
+    const oldInjected = document.querySelector(`#${targetId} .rider-list-injected`);
+    if (oldInjected) oldInjected.remove();
 
-    // Debounced function to run the logic
-    const debouncedRun = (() => {
-        let timeout;
-        return () => {
-            clearTimeout(timeout);
-            timeout = setTimeout(runScriptLogic, 200); 
-        };
-    })();
 
-    window.addEventListener('hashchange', debouncedRun);
-    window.addEventListener('load', debouncedRun);
+    const restaurantApiUrl = `https://livry.flexi-apps.com/api/v1/admin/${orderInfo.basePath}/${orderInfo.orderId}`;
+    const ridersApiUrl = 'https://livry.flexi-apps.com/api/v1/admin/livreurs/locations?$filter={}&$skip=0&$sort={}&$top=100&range=[0,99]';
 
+    let restaurantLat, restaurantLon;
+    try {
+        const restoResponse = await fetch(restaurantApiUrl);
+        const restoData = await restoResponse.json();
+        
+        let coordinates;
+        if (orderInfo.basePath === 'orders') coordinates = restoData.restaurantInfo?.location?.coordinates;
+        else if (orderInfo.basePath === 'partnerOrders') coordinates = restoData.collect_point?.location?.coordinates;
+
+        if (!coordinates || coordinates.length < 2) {
+            console.error('❌ Livry Rider Script: Could not find valid store coordinates.');
+            return;
+        }
+        restaurantLon = coordinates[0]; 
+        restaurantLat = coordinates[1];
+    } catch (error) {
+        console.error('❌ Livry Rider Script: Error fetching store data.', error);
+        return;
+    }
+
+    let ridersData;
+    try {
+        const ridersResponse = await fetch(ridersApiUrl);
+        ridersData = await ridersResponse.json();
+    } catch (error) {
+        console.error('❌ Livry Rider Script: Error fetching riders data.', error);
+        return;
+    }
+
+    let calculatedRiders = [];
+    let cleaningRiderStatus = 'offline';
+
+    // 1. Calculate distances for all active riders (excluding the fixed one)
+    for (const rider of ridersData.value) {
+        if (rider._id === CLEANING_RIDER_ID) {
+            cleaningRiderStatus = rider.status;
+            continue; 
+        } 
+        
+        const isActive = ACTIVE_STATUSES.includes(rider.status);
+        const hasValidCoordinates = rider.location?.coordinates?.length === 2 && (rider.location.coordinates[0] !== 0 || rider.location.coordinates[1] !== 0);
+
+        if (isActive && hasValidCoordinates) {
+            const distance = calculateDistance(restaurantLat, restaurantLon, rider.location.coordinates[1], rider.location.coordinates[0]);
+
+            calculatedRiders.push({ 
+                name: rider.name, 
+                id: rider._id, 
+                distanceKm: distance,
+                status: rider.status
+            });
+        }
+    }
+    
+    // 2. Sort all calculated riders and take the top 9
+    calculatedRiders.sort((a, b) => a.distanceKm - b.distanceKm);
+    const top9Riders = calculatedRiders.slice(0, NUM_NEAR_RIDERS); 
+
+    // 3. Create the fixed rider object
+    const fixedRider = {
+         name: CLEANING_RIDER_NAME, 
+         id: CLEANING_RIDER_ID, 
+         distanceKm: -1, 
+         status: cleaningRiderStatus 
+    };
+
+    // 4. Combine: Fixed rider first (Rank #1), then the top 9 calculated riders
+    const topRiders = [fixedRider, ...top9Riders];
+
+    // 5. Final check on the total number of riders (max 10)
+    if (topRiders.length > DISPLAY_LIMIT) {
+         topRiders.length = DISPLAY_LIMIT;
+    }
+
+    riderCalculationCache[cacheKey] = topRiders;
+    injectRiderList(orderInfo, topRiders);
+}
+
+// --- EXECUTION CONTROL ---
+
+function runScriptLogic(forceRecalculation = false) {
+    const info = getOrderInfoFromURL();
+    
+    if (!info) {
+         currentOrderId = null;
+         return;
+    }
+
+    // New order ID detected, or first run
+    if (info.orderId !== currentOrderId) {
+        currentOrderId = info.orderId;
+        console.log(`Livry Rider Script: Detail Page Detected: ${currentOrderId}`);
+    }
+    
+    // --- 1. Run Calculation/Injection ---
+    runRiderCalculation(info, forceRecalculation); 
+    
+    // --- 2. Ensure Persistence and Refresh Listener is attached/maintained ---
+    attachAndMaintainListeners(info);
+}
+
+// Attaches and maintains the listener logic using a single observer
+let observer = null;
+function attachAndMaintainListeners(info) {
+    const targetId = info.targetId;
+
+    if (observer) observer.disconnect();
+
+    observer = new MutationObserver((mutationsList, obs) => {
+        const targetElement = document.getElementById(targetId);
+        const refreshButton = document.querySelector(`[title="${REFRESH_BUTTON_TITLE}"].MuiIconButton-root`);
+        
+        // A. Re-injection Logic (Persistence):
+        if (targetElement && !targetElement.querySelector('.rider-list-injected')) {
+            // Re-inject immediately if the element exists but our marker is gone
+            injectRiderList(info, riderCalculationCache[info.orderId] || []);
+        }
+
+        // B. Refresh Button Listener Logic:
+        if (refreshButton && !refreshButton.listenerAttached) {
+            refreshButton.listenerAttached = true; 
+            refreshButton.addEventListener('click', () => {
+                console.log(`\n🔄 Refresh button clicked. Forcing recalculation for ID: ${info.orderId}`);
+                delete riderCalculationCache[info.orderId];
+                debouncedRun(true); 
+            });
+            console.log('Livry Rider Script: Attached click listener to "Actualiser" button.');
+        }
+    });
+    
+    // Start observing the entire body for changes
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Debounced function to run the logic safely
+const debouncedRun = (() => {
+    let timeout;
+    return (forceRecalculation = false) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            const info = getOrderInfoFromURL();
+            if (info) {
+                runScriptLogic(forceRecalculation);
+            } else {
+                currentOrderId = null;
+            }
+        }, 50); // Reduced delay for speed
+    };
 })();
+
+// --- INITIALIZATION ---
+
+// Expose functions globally for inline HTML buttons
+window.assignRiderToOrder = assignRiderToOrder;
+window.makeRiderOnline = makeRiderOnline; 
+
+// Listeners for SPA navigation and page load
+window.addEventListener('hashchange', () => debouncedRun());
+window.addEventListener('load', () => debouncedRun());
+
+console.log("✅ Rider Locator (External Script) is loaded.");
