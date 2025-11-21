@@ -1,0 +1,300 @@
+// ==UserScript==
+// @name          row final 1-14
+// @namespace     http://tampermonkey.net/
+// @version       1.14 // Incrementing version for the change
+// @description   Highlight rows for tables and monitor strict late orders.
+// @author        ismail boujara
+// @match         https://livry.flexi-apps.com/*
+// @grant         none
+// @require       https://raw.githubusercontent.com/biksoft/newjs/main/btlivry.js
+// @require       https://raw.githubusercontent.com/biksoft/newjs/main/ncnorder.js
+// @require       https://raw.githubusercontent.com/biksoft/newjs/main/addRCOnlineButton.js
+// @require       https://raw.githubusercontent.com/biksoft/newjs/main/nr.js
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    // --- Configuration & Helpers ---
+
+const TARGET_PAGE = 'https://livry.flexi-apps.com/#/partnerOrders';
+let lastUrl = location.href;
+let lateOrdersMonitorInitialized = false;
+function isListPage(url) {
+    // Regex explanation:
+    // \#/orders$ : Matches '/#/orders' exactly at the end of the hash part.
+    // | : OR
+    // \#/orders\? : Matches '/#/orders?' (which indicates query parameters, still a list page).
+    // The same logic is applied to partnerOrders and supermarket-orders.
+    const listPattern = /(\#\/orders$|\#\/orders\?|\#\/partnerOrders$|\#\/partnerOrders\?|\#\/supermarket-orders$|\#\/supermarket-orders\?)/;
+    return listPattern.test(url);
+}
+
+// Helper: Check if we are on a target page
+function isTargetPage() {
+    // This is the function used in the auto-refresh loop.
+    // It now calls the more specific list page check.
+    const url = window.location.href;
+    return isListPage(url);
+}
+
+// Helper: Check for the specific page where Livreurs and auto-refresh logic apply
+function isPartnerOrdersPage() {
+    // The specific partner orders list page logic remains the same.
+    // You could also update this to use isListPage for partner orders:
+    // return isListPage(window.location.href) && window.location.href.includes('#/partnerOrders');
+    return window.location.href === TARGET_PAGE;
+}
+
+    // --- Core Functions ---
+
+    /**
+     * Updates the table header text.
+     */
+    function updateHeader() {
+        const headers = document.querySelectorAll('th[resource="partnerOrders"] span');
+        headers.forEach(span => {
+            if (span.textContent.trim() === 'Date Précommande') {
+                span.textContent = 'Livreurs';
+            }
+        });
+    }
+
+    /**
+     * Fetches and inserts livreur names.
+     */
+    async function insertLivreurNames() {
+        try {
+            const res = await fetch("https://livry.flexi-apps.com/api/v1/admin/partnerOrders?$filter={}&$skip=0&$sort={\"created_at\":-1}&$top=100&range=[0,99]", {
+                credentials: "include"
+            });
+
+            const json = await res.json();
+            if (!Array.isArray(json?.value)) return;
+
+            const livreurNames = json.value.map(order => order?.livreur_info?.name || "—");
+
+            // Use a specific column selector for better performance/accuracy if possible.
+            // Keeping the original selector as it seems to target the correct column.
+            const cells = document.querySelectorAll('td.column-scheduled_delivery_date');
+
+            // Only update if the number of cells matches the fetched data length
+            if (cells.length === livreurNames.length) {
+                 cells.forEach((cell, index) => {
+                    cell.textContent = livreurNames[index] || "—";
+                });
+            }
+
+
+        } catch (err) {
+            // Silent fail
+        }
+    }
+
+    // --- Strict Late Orders Monitor ---
+
+    // Note: Moved inside a function so it can be called only when needed.
+    function startStrictLateOrdersMonitor() {
+        if (lateOrdersMonitorInitialized) return; // Prevent re-initialization
+
+        const container = document.querySelector('div.MuiDrawer-paperAnchorDockedLeft');
+        if (!container) return console.error("Sidebar container not found.");
+
+        const resultTable = document.createElement('table');
+        resultTable.id = 'strict-late-orders-table'; // Added ID for easier future selection
+        resultTable.style = `
+            width: 100%;
+            margin-top: 10px;
+            border-collapse: collapse;
+            font-family: sans-serif;
+            font-size: 14px;
+            color: black;
+        `;
+        resultTable.innerHTML = `
+            <thead>
+                <tr style="background: #f0f0f0;">
+                    <th style="padding: 5px; border: 1px solid #ccc;">Order ID</th>
+                    <th style="padding: 5px; border: 1px solid #ccc;">Late Time</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        `;
+        container.appendChild(resultTable);
+
+        const validStates = [
+            ["Acceptée", "EN RECHERCHE"],
+            ["Acceptée", "Acceptée"],
+            ["Prête", "EN RECHERCHE"],
+            ["Prête", "Acceptée"],
+            ["Récupéré", "Récupéré"]
+        ];
+
+        function updateLateOrders() {
+            const rows = Array.from(document.querySelectorAll('tr.MuiTableRow-root'));
+            const tbody = resultTable.querySelector('tbody');
+            tbody.innerHTML = "";
+
+            const now = new Date();
+            const codeCounts = {};
+
+            // First pass to count unique codes
+            rows.forEach(row => {
+                const codeEl = row.querySelector('td.column-code span');
+                if (codeEl) {
+                    const code = codeEl.textContent.trim();
+                    codeCounts[code] = (codeCounts[code] || 0) + 1;
+                }
+            });
+
+            // Second pass to process and append late orders
+            rows.forEach(row => {
+                const codeEl = row.querySelector('td.column-code span');
+                const createdAtEl = row.querySelector('td.column-created_at span');
+                const orderIdEl = row.querySelector('td.column-order_id span');
+                const partnerStatusEl = row.querySelector('td.column-status span');
+                const ambassadorStatusEl = row.querySelector('td.column-livreur_status span');
+
+                // Consolidated check for required elements
+                if (!codeEl || !createdAtEl || !orderIdEl || !partnerStatusEl || !ambassadorStatusEl) return;
+
+                const code = codeEl.textContent.trim();
+                if (codeCounts[code] !== 1) return; // Skip if code is not unique (duplicate row)
+
+                const partnerStatus = partnerStatusEl.textContent.trim();
+                const ambassadorStatus = ambassadorStatusEl.textContent.trim();
+
+                const isValidCombo = validStates.some(([p, a]) => p === partnerStatus && a === ambassadorStatus);
+                if (!isValidCombo) return;
+
+                const createdAtStr = createdAtEl.textContent.trim();
+                const [datePart, timePart] = createdAtStr.split(' ');
+                const [day, month, year] = datePart.split('/');
+
+                // Using a more robust Date constructor (YYYY-MM-DDTHH:MM:SS)
+                const createdDate = new Date(`${year}-${month}-${day}T${timePart}`);
+                const diffMin = (now - createdDate) / 60000;
+
+                if (diffMin > 30) {
+                    const orderId = orderIdEl.textContent.trim();
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding: 5px; border: 1px solid #ccc;">${orderId}</td>
+                        <td style="padding: 5px; border: 1px solid #ccc;" class="late-timer" data-start="${createdDate.toISOString()}"></td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+            // Update timers immediately after updating the list
+            updateTimers();
+        }
+
+        function updateTimers() {
+            const now = new Date();
+            document.querySelectorAll('#strict-late-orders-table .late-timer').forEach(td => {
+                const start = new Date(td.getAttribute('data-start'));
+                const diffMs = now - start;
+                const minutes = Math.floor(diffMs / 60000);
+                const seconds = Math.floor((diffMs % 60000) / 1000);
+
+                // Format with padding for better readability
+                const secStr = seconds.toString().padStart(2, '0');
+                td.textContent = `${minutes} min ${secStr} sec`;
+
+                // Highlight rows that are very late (e.g., > 60 min)
+                if (minutes > 60) {
+                    td.parentNode.style.backgroundColor = '#ffcccc'; // Light red
+                } else if (minutes > 45) {
+                    td.parentNode.style.backgroundColor = '#ffffcc'; // Light yellow
+                } else {
+                    td.parentNode.style.backgroundColor = 'transparent';
+                }
+            });
+        }
+
+        // Initial run
+        updateLateOrders();
+
+        // Timer for seconds (runs every 1 second)
+        setInterval(updateTimers, 1000);
+
+        // Recalculate late orders list (runs every 10 seconds, matching the refresh rate)
+        setInterval(updateLateOrders, 10000);
+
+        lateOrdersMonitorInitialized = true;
+    }
+
+    // --- Auto-Refresh Logic ---
+
+    /**
+     * Clicks the filter refresh button. Targets two possible selectors.
+     */
+    function clickRefreshButton() {
+        // Selector 1: The generic icon button (MuiIconButton)
+        let button = document.querySelector('button.MuiButtonBase-root.MuiIconButton-root.jss20.MuiIconButton-colorInherit');
+
+        // Selector 2: The button with the title "Actualiser" (more robust)
+        if (!button) {
+             button = document.querySelector('button[title="Actualiser"]');
+        }
+
+        if (button) {
+            button.click();
+        }
+    }
+
+    // --- Main Update Loop ---
+
+    /**
+     * Main function to check URL and apply updates/logic.
+     * Runs every 500ms (Your original timing, can be increased if needed).
+     */
+    function updatePage() {
+        const currentUrl = window.location.href;
+        const isPartnerPage = isPartnerOrdersPage();
+        const isTarget = isTargetPage();
+
+        if (currentUrl !== lastUrl) {
+            // URL changed, clear content if we navigate away from partner orders page
+            if (lastUrl === TARGET_PAGE && !isPartnerPage) {
+                // This logic is mostly needed if the page doesn't fully reload.
+                const cells = document.querySelectorAll('td.column-scheduled_delivery_date');
+                cells.forEach(cell => {
+                    // Reset to original date or clear as needed. Clearing for simplicity.
+                    cell.textContent = '';
+                });
+            }
+        }
+
+        // Run specific logic only on the correct page
+        if (isPartnerPage) {
+            updateHeader();
+            insertLivreurNames();
+        }
+
+        // Initialize late orders monitor on any target page once
+        if (isTarget && !lateOrdersMonitorInitialized) {
+            // Wait for the table to load *before* initializing the monitor
+            const tableLoaded = document.querySelector('tr.MuiTableRow-root');
+            if (tableLoaded) {
+                 startStrictLateOrdersMonitor();
+            }
+        }
+
+        lastUrl = currentUrl;
+    }
+
+    // --- Initialization ---
+
+    // 1. URL/Content check loop (to handle client-side routing)
+    // Run this frequently to catch URL changes and DOM updates on SPAs
+    setInterval(updatePage, 500);
+
+    // 2. Auto-Refresh loop (combined logic, using only one interval)
+    // Runs the *Actualiser* click logic every 10 seconds on target pages
+    setInterval(() => {
+        if (isTargetPage()) {
+             clickRefreshButton();
+        }
+    }, 10000);
+
+})();
